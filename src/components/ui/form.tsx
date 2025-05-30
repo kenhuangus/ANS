@@ -107,11 +107,11 @@ FormLabel.displayName = "FormLabel"
 const FormControl = React.forwardRef<
   React.ElementRef<typeof Slot>,
   React.ComponentPropsWithoutRef<typeof Slot>
->(({ ...props }, ref) => { // Reverted to standard pattern: ({ ...props }, ref)
+>(({ children, ...rest }, ref) => { // Explicitly destructure 'children'
   const { error, formItemId, formDescriptionId, formMessageId } = useFormField()
 
   return (
-    <Slot // Slot receives all props, including children, via {...props}
+    <Slot
       ref={ref}
       id={formItemId}
       aria-describedby={
@@ -120,8 +120,10 @@ const FormControl = React.forwardRef<
           : `${formDescriptionId} ${formMessageId}`
       }
       aria-invalid={!!error}
-      {...props}
-    />
+      {...rest} // Pass the rest of the props (excluding children) to Slot
+    >
+      {children} {/* Pass the original children of FormControl as explicit children to Slot */}
+    </Slot>
   )
 })
 FormControl.displayName = "FormControl"
