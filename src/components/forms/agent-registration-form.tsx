@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { AgentRegistrationRequestBaseSchema, type AgentRegistrationRequestPayload } from "@/lib/schemas"; // Changed import
+import { AgentRegistrationRequestBaseSchema, type AgentRegistrationRequestPayload } from "@/lib/schemas";
 import type { AgentRegistrationResponse, Protocol } from "@/types";
 import { useState } from "react";
 import { Loader2, Sparkles } from "lucide-react";
@@ -43,20 +43,20 @@ export function AgentRegistrationForm() {
   const [registrationResult, setRegistrationResult] = useState<AgentRegistrationResponse | null>(null);
 
   const form = useForm<AgentRegistrationRequestPayload>({
-    resolver: zodResolver(AgentRegistrationRequestBaseSchema), // Ensured correct schema is used here
+    resolver: zodResolver(AgentRegistrationRequestBaseSchema),
     defaultValues: { 
-      protocol: undefined, 
+      protocol: undefined, // Start with undefined or a basic valid default for Select
       agentID: "",
       agentCapability: "",
       provider: "",
-      version: "",
-      extension: "",
+      version: "", // e.g., "1.0.0" - user can clear or AI can fill
+      extension: "", // Can be empty, will be treated as null if schema allows
       certificate: {
         subject: "",
         issuer: "", 
         pem: "", 
       },
-      protocolExtensions: {},
+      protocolExtensions: {}, // Start with an empty object
       actualEndpoint: "",
     },
   });
@@ -64,7 +64,6 @@ export function AgentRegistrationForm() {
   async function handleAiFill() {
     setIsAiLoading(true);
     const currentValues = form.getValues();
-    // For the AI fill action, we use the GenerateRegistrationDetailsInput which is a partial of AgentRegistrationRequestBaseSchema
     const result = await aiFillRegistrationDetailsAction(currentValues); 
     
     if ('error' in result) {
@@ -89,25 +88,55 @@ export function AgentRegistrationForm() {
     setIsAiLoading(false);
   }
 
-  async function onSubmit(data: AgentRegistrationRequestPayload) {
+  async function onSubmit(formDataFromHook: AgentRegistrationRequestPayload) {
     setIsLoading(true);
     setRegistrationResult(null);
 
-    if (!data.protocol || !data.agentID || !data.agentCapability || !data.provider || !data.version || !data.actualEndpoint || !data.certificate?.pem || !data.certificate?.subject) {
-      toast({
-        title: "Missing Information",
-        description: "Essential fields (like protocol, agentID, capability, provider, version, endpoint, CSR) are required for registration. Use 'AI Fill' or complete them manually.",
-        variant: "destructive",
-      });
-      setIsLoading(false);
-      return;
-    }
+    // Define comprehensive, valid sample values for all fields
+    // These will be used if the corresponding field in formDataFromHook is empty/missing
+    const completeSampleValues: Required<AgentRegistrationRequestPayload> = {
+        protocol: "a2a",
+        agentID: "sampleFormAgent",
+        agentCapability: "formSubmissionDemo",
+        provider: "FormDefaultProvider",
+        version: "1.0.0",
+        extension: "sample-ext", 
+        certificate: {
+            subject: "CN=sample.form.agent.example.com,O=FormDefaultProvider,C=US",
+            issuer: "CN=SampleLocalFormCA,O=SampleOrg,C=US",
+            pem: `-----BEGIN CERTIFICATE REQUEST-----\nMIICWjCCAbsCAQAwWzELMAkGA1UEBhMCVVMxEDAOBgNVBAgMB0FyaXpvbmExDjAM\nBgNVBAcMBVRlbXBlMRQwEgYDVQQKDAtTYW1wbGUgQ29ycDEUMBIGA1UEAwwLZXhh\nbXBsZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC4pY7/9gH7\nZfV7p8z9X9hM3w/tF6Z+s5F2e3k4v0KM3vN7v9gB5sP/G3z8K5vP4g7j8N4c5v/s\n2v7X6xR8vN2d4K8P9o/A6k5O8fP8Y6q/C4n2k7U5e8V2A3w9mB6y9r/J5kP/t3n\n5Gq7z8V6l8r/O9X7s8P/w4U3K9N/o7R2m+E9v9Q7x/F3m+Y9vC8p7K/P7j6D+M8\nN/R9qAgMBAAGgADANBgkqhkiG9w0BAQsFAAOCAQEABV35L/2D/4t/qV7P+Z/0\nE/jM9v+P3H/0F9hO7n9tF6Z/s5F2e3k4v0KM3vN7v9gB5sP/G3z8K5vP4g7j8N\n4c5v/s2v7X6xR8vN2d4K8P9o/A6k5O8fP8Y6q/C4n2k7U5e8V2A3w9mB6y9r/J\n5kP/t3n5Gq7z8V6l8r/O9X7s8P/w4U3K9N/o7R2m+E9v9Q7x/F3m+Y9vC8p7K\n-----END CERTIFICATE REQUEST-----`,
+        },
+        protocolExtensions: {
+            description: "A sample agent submitted with form defaults.",
+            source: "form-default-sample"
+        },
+        actualEndpoint: "https://api.formdefaultprovider.com/agents/sampleFormAgent/v1",
+    };
+    
+    // Build the payload, using sample values for any field that is empty or not provided by the user
+    const payload: AgentRegistrationRequestPayload = {
+      protocol: formDataFromHook.protocol || completeSampleValues.protocol,
+      agentID: formDataFromHook.agentID?.trim() || completeSampleValues.agentID,
+      agentCapability: formDataFromHook.agentCapability?.trim() || completeSampleValues.agentCapability,
+      provider: formDataFromHook.provider?.trim() || completeSampleValues.provider,
+      version: formDataFromHook.version?.trim() || completeSampleValues.version,
+      extension: formDataFromHook.extension === "" ? null : (formDataFromHook.extension?.trim() ?? completeSampleValues.extension),
+      certificate: {
+        subject: formDataFromHook.certificate?.subject?.trim() || completeSampleValues.certificate.subject,
+        issuer: formDataFromHook.certificate?.issuer?.trim() || completeSampleValues.certificate.issuer,
+        pem: formDataFromHook.certificate?.pem?.trim() || completeSampleValues.certificate.pem,
+      },
+      protocolExtensions: (formDataFromHook.protocolExtensions && typeof formDataFromHook.protocolExtensions === 'object' && Object.keys(formDataFromHook.protocolExtensions).length > 0)
+        ? formDataFromHook.protocolExtensions
+        : completeSampleValues.protocolExtensions,
+      actualEndpoint: formDataFromHook.actualEndpoint?.trim() || completeSampleValues.actualEndpoint,
+    };
     
     try {
       const response = await fetch('/api/agents/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload), // Send the defaulted payload
       });
 
       const result = await response.json();
@@ -121,6 +150,7 @@ export function AgentRegistrationForm() {
         title: "Registration Attempted",
         description: result.message || `Agent ${result.ansName} registration processed.`,
       });
+      // form.reset(); // Optionally reset form after successful submission
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
       toast({
@@ -138,8 +168,8 @@ export function AgentRegistrationForm() {
       <CardHeader>
         <CardTitle className="text-3xl text-primary">Register New Agent</CardTitle>
         <CardDescription>
-          Fill in the details below or use the &quot;AI Fill Details&quot; button for assistance.
-          The certificate PEM should be a Certificate Signing Request (CSR).
+          Fill in the details below or use &quot;AI Fill Details&quot;. Empty fields will use sample values on submission.
+          Certificate PEM should be a Certificate Signing Request (CSR).
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -161,7 +191,7 @@ export function AgentRegistrationForm() {
                   <Select onValueChange={field.onChange} value={field.value || ""} disabled={isAiLoading}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a protocol (or let AI choose)" />
+                        <SelectValue placeholder="Select a protocol (or let AI choose/use sample)" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -183,11 +213,11 @@ export function AgentRegistrationForm() {
               <FormField control={form.control} name="version" render={({ field }) => ( <FormItem> <FormLabel>Version (Semantic)</FormLabel> <FormControl><Input placeholder="e.g., 1.0.0" {...field} value={field.value || ""} disabled={isAiLoading}/></FormControl> <FormMessage /> </FormItem> )}/>
             </div>
              <FormField control={form.control} name="actualEndpoint" render={({ field }) => ( <FormItem> <FormLabel>Actual Network Endpoint URL</FormLabel> <FormControl><Input placeholder="https://api.example.com/agent" {...field} value={field.value || ""} disabled={isAiLoading}/></FormControl> <FormDescription>The resolvable URL where the agent can be reached.</FormDescription> <FormMessage /> </FormItem> )}/>
-            <FormField control={form.control} name="extension" render={({ field }) => ( <FormItem> <FormLabel>Extension</FormLabel> <FormControl><Input placeholder="e.g., hipaa, generic (optional)" {...field} value={field.value || ""} disabled={isAiLoading}/></FormControl> <FormDescription>Optional metadata for deployment or provider specifics.</FormDescription> <FormMessage /> </FormItem> )}/>
+            <FormField control={form.control} name="extension" render={({ field }) => ( <FormItem> <FormLabel>Extension</FormLabel> <FormControl><Input placeholder="e.g., hipaa, generic (optional)" {...field} value={field.value || ""} disabled={isAiLoading}/></FormControl> <FormDescription>Optional metadata. Will be null if left empty.</FormDescription> <FormMessage /> </FormItem> )}/>
             
             <FormField control={form.control} name="certificate.subject" render={({ field }) => ( <FormItem> <FormLabel>Certificate Subject (for CSR)</FormLabel> <FormControl><Input placeholder="e.g., CN=myagent.example.com,O=MyOrg" {...field} value={field.value || ""} disabled={isAiLoading}/></FormControl> <FormMessage /> </FormItem> )}/>
-            <FormField control={form.control} name="certificate.pem" render={({ field }) => ( <FormItem> <FormLabel>Certificate Signing Request (CSR PEM)</FormLabel> <FormControl><Textarea placeholder="-----BEGIN CERTIFICATE REQUEST-----..." {...field} value={field.value || ""} rows={7} disabled={isAiLoading}/></FormControl> <FormDescription>Paste the full PEM-encoded CSR here, or let AI generate a mock one.</FormDescription> <FormMessage /> </FormItem> )}/>
-             <FormField control={form.control} name="certificate.issuer" render={({ field }) => ( <FormItem> <FormLabel>Certificate Issuer (Informational for CSR)</FormLabel> <FormControl><Input placeholder="e.g., CN=Local Mock CA (auto-filled by AI if CSR generated)" {...field} value={field.value || ""} disabled={isAiLoading}/></FormControl> <FormMessage /> </FormItem> )}/>
+            <FormField control={form.control} name="certificate.pem" render={({ field }) => ( <FormItem> <FormLabel>Certificate Signing Request (CSR PEM)</FormLabel> <FormControl><Textarea placeholder="-----BEGIN CERTIFICATE REQUEST-----..." {...field} value={field.value || ""} rows={7} disabled={isAiLoading}/></FormControl> <FormDescription>Paste CSR or let AI/sample provide one.</FormDescription> <FormMessage /> </FormItem> )}/>
+             <FormField control={form.control} name="certificate.issuer" render={({ field }) => ( <FormItem> <FormLabel>Certificate Issuer (Informational)</FormLabel> <FormControl><Input placeholder="e.g., CN=Local Mock CA (optional)" {...field} value={field.value || ""} disabled={isAiLoading}/></FormControl> <FormMessage /> </FormItem> )}/>
             
             <FormField
               control={form.control}
@@ -215,7 +245,7 @@ export function AgentRegistrationForm() {
                       disabled={isAiLoading}
                     />
                   </FormControl>
-                  <FormDescription>Protocol-specific data in JSON format. AI can add a description.</FormDescription>
+                  <FormDescription>Protocol-specific data in JSON format. AI/sample can add a description.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
