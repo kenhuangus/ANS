@@ -1,12 +1,13 @@
+
 import { z } from 'zod';
 import type { Protocol as AgentProtocolType } from '@/types'; // Renamed to avoid conflict
 
-const semanticVersionPattern = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/;
+export const semanticVersionPattern = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/;
 const ansNamePattern = /^(a2a|mcp|acp):\/\/([^.]+)\.([^.]+)\.([^.]+)\.v([^.]+)(?:\.([^.]+))?$/;
 
 
 export const CertificateSchema = z.object({
-  subject: z.string().optional(),
+  subject: z.string().optional(), // Empty string is a string, so this is fine if AI returns ""
   issuer: z.string().optional(),
   pem: z.string().optional(), 
 });
@@ -35,7 +36,7 @@ export const AgentRenewalRequestBaseSchema = z.object({
 export type AgentRenewalRequestPayload = z.infer<typeof AgentRenewalRequestBaseSchema>;
 
 export const AgentRevocationRequestSchema = z.object({
-  ansName: z.string().regex(ansNamePattern, "Invalid ANSName format.").optional(),
+  ansName: z.string().regex(ansNamePattern, "Invalid ANSName format.").optional(), // Made optional, AI or backend can handle
 });
 export type AgentRevocationRequestPayload = z.infer<typeof AgentRevocationRequestSchema>;
 
@@ -73,13 +74,27 @@ export type AgentCapabilityResponsePayload = z.infer<typeof AgentCapabilityRespo
 
 
 // AI Flow Specific Schemas
-// These are derived from the base schemas but used specifically for AI input/output.
 
 // For GenerateRegistrationDetails Flow
 export const GenerateRegistrationDetailsInputSchema = AgentRegistrationRequestBaseSchema.partial().describe("Partial agent registration details provided by the user. Empty fields should be filled by the AI.");
 export type GenerateRegistrationDetailsInput = z.infer<typeof GenerateRegistrationDetailsInputSchema>;
 
-export const GenerateRegistrationDetailsOutputSchema = AgentRegistrationRequestBaseSchema.required().describe("Completed agent registration details, with AI-generated values for any missing fields. All base fields are now required.");
+// The output schema for the AI flow. This ensures all fields AI is supposed to fill are present and valid.
+export const GenerateRegistrationDetailsOutputSchema = AgentRegistrationRequestBaseSchema.extend({
+  protocol: z.enum(["a2a", "mcp", "acp"]), // Required
+  agentID: z.string().min(1, "Agent ID cannot be empty"), // Required and non-empty
+  agentCapability: z.string().min(1, "Agent Capability cannot be empty"), // Required and non-empty
+  provider: z.string().min(1, "Provider cannot be empty"), // Required and non-empty
+  version: z.string().regex(semanticVersionPattern, "Version must be in Semantic Versioning format."), // Required
+  extension: z.string().nullable(), // Required (can be null)
+  certificate: CertificateSchema.extend({ // Certificate object is required
+    subject: z.string().min(1, "Certificate subject cannot be empty"), // CSR subject is important
+    pem: z.string().min(1, "Certificate PEM (CSR) cannot be empty") // CSR PEM is important
+    // issuer can remain optional within certificate
+  }),
+  protocolExtensions: z.record(z.string(), z.any()).nullable(), // Required (can be null), ensuring it's an object if not null
+  actualEndpoint: z.string().url("Actual endpoint must be a valid URL."), // Required
+}).describe("Completed agent registration details, with AI-generated values for any missing fields. All base fields are now required, and some have stricter non-empty constraints for AI output.");
 export type GenerateRegistrationDetailsOutput = z.infer<typeof GenerateRegistrationDetailsOutputSchema>;
 
 
@@ -87,7 +102,14 @@ export type GenerateRegistrationDetailsOutput = z.infer<typeof GenerateRegistrat
 export const GenerateRenewalDetailsInputSchema = AgentRenewalRequestBaseSchema.partial().describe("Partial agent renewal details provided by the user. User should provide 'ansName'.");
 export type GenerateRenewalDetailsInput = z.infer<typeof GenerateRenewalDetailsInputSchema>;
 
-export const GenerateRenewalDetailsOutputSchema = AgentRenewalRequestBaseSchema.required({ansName: true, certificate: true}).describe("Completed agent renewal details. 'ansName' and 'certificate' (with at least PEM) are required. Other fields AI-generated if missing.");
+export const GenerateRenewalDetailsOutputSchema = AgentRenewalRequestBaseSchema.extend({
+  ansName: z.string().regex(ansNamePattern, "Invalid ANSName format."), // Required for renewal
+  certificate: CertificateSchema.extend({ // Certificate object is required
+    subject: z.string().min(1, "Certificate subject cannot be empty for renewal CSR"),
+    pem: z.string().min(1, "Certificate PEM (CSR) cannot be empty for renewal")
+  }),
+  // actualEndpoint and protocolExtensions remain optional as per AgentRenewalRequestBaseSchema
+}).describe("Completed agent renewal details. 'ansName' and 'certificate' (with subject and PEM) are required. Other fields AI-generated if missing.");
 export type GenerateRenewalDetailsOutput = z.infer<typeof GenerateRenewalDetailsOutputSchema>;
 
 
@@ -99,3 +121,5 @@ export const GenerateLookupDetailsOutputSchema = AgentCapabilityRequestBaseSchem
   requestType: z.literal("resolve").default("resolve") // Ensure requestType is always 'resolve'
 }).describe("Completed agent lookup details, with AI-generated or structured values for missing/partial fields.");
 export type GenerateLookupDetailsOutput = z.infer<typeof GenerateLookupDetailsOutputSchema>;
+
+    
