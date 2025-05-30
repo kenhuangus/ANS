@@ -1,50 +1,60 @@
+
 import { NextResponse, type NextRequest } from 'next/server';
-import { AgentRegistrationRequestSchema } from '@/lib/schemas';
-import { addAgent, findAgentByAnsName } from '@/lib/db'; 
+import { AgentRegistrationRequestBaseSchema } from '@/lib/schemas'; // Updated import
+import { addAgent, findAgentByAnsName } from '@/lib/db';
 import { generateCertificate, LOCAL_CA_CERTIFICATE_PEM, LOCAL_CA_PRIVATE_KEY_PEM } from '@/lib/pki';
-import { constructANSName } from '@/lib/ans';
+import { constructANSName, semanticVersionPattern } from '@/lib/ans'; // Assuming semanticVersionPattern is exported if needed here
 import type { AgentRegistrationRequestPayload } from '@/lib/schemas';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const validation = AgentRegistrationRequestSchema.safeParse(body);
+    const validation = AgentRegistrationRequestBaseSchema.safeParse(body); // Use the correct schema
 
     if (!validation.success) {
+      console.error("API Validation Error:", validation.error.format());
       return NextResponse.json({ error: "Invalid request payload", details: validation.error.format() }, { status: 400 });
     }
 
     const data: AgentRegistrationRequestPayload = validation.data;
 
-    // Even though fields are optional in schema for AI-fill later,
-    // for actual registration, core components are needed.
-    // AI would ideally fill these if missing from user input.
+    // Essential data checks, even if schema allows optional for AI fill.
+    // Client-side completeSampleValues should ensure these are populated.
     if (!data.protocol || !data.agentID || !data.agentCapability || !data.provider || !data.version || !data.actualEndpoint || !data.certificate?.pem || !data.certificate?.subject) {
-      return NextResponse.json({ 
-        error: "Missing essential agent information for registration. Required: protocol, agentID, agentCapability, provider, version, actualEndpoint, certificate PEM and subject." 
+      console.error("API Error: Missing essential agent information post-validation. Payload:", data);
+      return NextResponse.json({
+        error: "API Error: Missing essential agent information for registration. Ensure all fields like protocol, agentID, capability, provider, version, actualEndpoint, certificate PEM and subject are provided."
       }, { status: 400 });
     }
-    
-    // Construct ANSName based on provided (or AI-filled) data
+    // Additional specific checks
+     if (typeof data.certificate.pem !== 'string' || data.certificate.pem.trim() === '') {
+        console.error("API Error: Certificate PEM is missing or not a string in validated data.", data.certificate);
+        return NextResponse.json({ error: "API Error: Invalid certificate PEM data after validation." }, { status: 400 });
+    }
+    // Ensure version is string and matches pattern if it's not optional in constructANSName or addAgent
+    if (typeof data.version !== 'string' || !semanticVersionPattern.test(data.version)) {
+        console.error("API Error: Version is missing, not a string, or invalid in validated data.", data.version);
+        return NextResponse.json({ error: "API Error: Invalid version data after validation." }, { status: 400 });
+    }
+
+
     const ansName = constructANSName({
       protocol: data.protocol,
       agentID: data.agentID,
       agentCapability: data.agentCapability,
       provider: data.provider,
       version: data.version,
-      extension: data.extension || undefined, // Pass undefined if null or empty
+      extension: data.extension || undefined,
     });
-    
+
     const existingAgent = await findAgentByAnsName(ansName);
     if (existingAgent) {
       return NextResponse.json({ error: `Agent with ANSName "${ansName}" already actively registered.` }, { status: 409 });
     }
 
-    // Mock CA signing the CSR
-    // data.certificate.pem should be a CSR. If AI generates this, it needs to be a valid CSR string.
     const agentCertificatePem = await generateCertificate(
-      data.certificate.pem, 
-      LOCAL_CA_CERTIFICATE_PEM, 
+      data.certificate.pem,
+      LOCAL_CA_CERTIFICATE_PEM,
       LOCAL_CA_PRIVATE_KEY_PEM
     );
 
@@ -56,7 +66,7 @@ export async function POST(request: NextRequest) {
       data.provider,
       data.version,
       data.extension || null,
-      agentCertificatePem, 
+      agentCertificatePem,
       data.protocolExtensions ? JSON.stringify(data.protocolExtensions) : null,
       data.actualEndpoint
     );
@@ -69,11 +79,26 @@ export async function POST(request: NextRequest) {
     }, { status: 201 });
 
   } catch (error) {
-    if (error instanceof Error && error.message.includes("already exists")) {
-        return NextResponse.json({ error: error.message }, { status: 409 }); 
+    // Log the full error object, including stack if available
+    // Using Object.getOwnPropertyNames to get non-enumerable properties like 'message' and 'stack'
+    console.error("Detailed Registration API Error:", JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+
+    let errorMessage = "An unknown error occurred during registration.";
+    let statusCode = 500;
+
+    if (error instanceof SyntaxError && error.message.toLowerCase().includes("json")) {
+        // This can happen if request.json() fails
+        errorMessage = `Invalid JSON in request body: ${error.message}`;
+        statusCode = 400;
+    } else if (error instanceof Error) {
+        errorMessage = error.message;
+        // Check specifically for the error thrown by addAgent or similar
+        if (error.message.includes("already actively registered") || error.message.includes("already exists")) {
+            statusCode = 409;
+        }
     }
-    console.error("Registration Error:", error);
-    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred during registration.";
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    // Ensure the message passed to the client is somewhat generic for unknown errors
+    // but specific for known ones, prefixed to indicate API origin.
+    return NextResponse.json({ error: `API Registration Error: ${errorMessage}` }, { status: statusCode });
   }
 }
