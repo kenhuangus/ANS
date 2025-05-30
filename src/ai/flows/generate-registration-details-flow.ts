@@ -40,7 +40,7 @@ Instructions for filling missing fields:
 2.  **agentID**: If missing OR AN EMPTY STRING, generate a plausible, concise, camelCased or PascalCased string. Examples: 'imageProcessor', 'documentTranslator', 'weatherReporter'. Base it on other provided info if available.
 3.  **agentCapability**: If missing OR AN EMPTY STRING, generate a plausible, concise, camelCased or PascalCased string related to the agentID. Examples: 'ResizeImage', 'TranslateText', 'GetCurrentWeather'.
 4.  **provider**: If missing OR AN EMPTY STRING, generate a plausible, concise, PascalCased company or organization name. Examples: 'CloudServicesInc', 'OpenSourceOrg', 'AcmeCorp'.
-5.  **version**: If missing OR AN EMPTY STRING, generate a semantic version like '1.0.0' or '0.1.0'. It MUST conform to semantic versioning.
+5.  **version**: If missing OR AN EMPTY STRING, generate a semantic version like '1.0.0' or '0.1.0'. It MUST conform to semantic versioning. Do not include 'v' prefix.
 6.  **extension**: If missing, null, OR AN EMPTY STRING that should be treated as absent, set to null or generate a common one like 'generic' or 'test'. Keep it short. If an empty string is semantically meaningful and different from null, preserve it if appropriate. Generally, prefer null for absence.
 7.  **certificate.subject**: If missing OR AN EMPTY STRING, generate a plausible Distinguished Name (DN) string. Example: 'CN=ai-agent.some-provider.com,O=SomeProvider,C=US'. Ensure 'O' (Organization) aligns with the 'provider' field if generated/present. 'CN' should be unique and relevant.
 8.  **certificate.pem**: If missing OR AN EMPTY STRING, generate a realistic-looking (but fake and non-functional) PEM-encoded Certificate SigningRequest (CSR).
@@ -83,80 +83,86 @@ const generateRegistrationDetailsFlow = ai.defineFlow(
 
     // --- Post-processing and Fallbacks for critical fields ---
 
-    // Ensure 'protocol' is set if AI misses it
-    if (!output.protocol) {
+    if (typeof output.protocol !== 'string' || !['a2a', 'mcp', 'acp'].includes(output.protocol)) {
         output.protocol = 'a2a'; 
+        console.warn(`AI did not provide a valid protocol. Original: '${output.protocol}'. Defaulting to 'a2a'.`);
     }
     
-    // Ensure 'version' is a valid semantic version
-    if (!output.version || !semanticVersionPattern.test(output.version)) {
-        output.version = '0.1.0'; // Default if AI fails to provide a valid one
-        console.warn("AI did not provide a valid version. Defaulting to 0.1.0.");
+    if (typeof output.agentID !== 'string' || output.agentID.trim() === '') {
+        output.agentID = 'defaultAgentID';
+        console.warn(`AI did not provide a valid agentID. Original: '${output.agentID}'. Defaulting to 'defaultAgentID'.`);
+    }
+    if (typeof output.agentCapability !== 'string' || output.agentCapability.trim() === '') {
+        output.agentCapability = 'defaultCapability';
+        console.warn(`AI did not provide a valid agentCapability. Original: '${output.agentCapability}'. Defaulting to 'defaultCapability'.`);
+    }
+    if (typeof output.provider !== 'string' || output.provider.trim() === '') {
+        output.provider = 'DefaultProvider';
+        console.warn(`AI did not provide a valid provider. Original: '${output.provider}'. Defaulting to 'DefaultProvider'.`);
     }
 
-    // Ensure 'actualEndpoint' is a valid URL
+    if (typeof output.version !== 'string' || !semanticVersionPattern.test(output.version)) {
+        output.version = '0.1.0'; 
+        console.warn(`AI did not provide a valid version or version was not a string. Original: '${output.version}'. Defaulting to 0.1.0.`);
+    }
+
     const endpointValidation = z.string().url().safeParse(output.actualEndpoint);
-    if (!output.actualEndpoint || !endpointValidation.success) {
-        output.actualEndpoint = `https://ai.example.com/${output.provider || 'provider'}/${output.agentID || 'agent'}/${output.version || 'v0'}`;
-        console.warn(`AI did not provide a valid actualEndpoint. Defaulting to: ${output.actualEndpoint}`);
+    if (typeof output.actualEndpoint !== 'string' || !endpointValidation.success) {
+        output.actualEndpoint = `https://ai.example.com/${output.provider || 'provider'}/${output.agentID || 'agent'}/${output.version || 'v0.1.0'}`;
+        console.warn(`AI did not provide a valid actualEndpoint or it was not a string. Original: '${output.actualEndpoint}'. Defaulting to: ${output.actualEndpoint}`);
     }
     
-    // Ensure 'certificate' object and its fields exist if needed by schema
-    // GenerateRegistrationDetailsOutputSchema makes `certificate` required.
-    // Its sub-fields (subject, pem, issuer) are optional strings in CertificateSchema.
-    // The prompt asks AI to generate them if missing/empty.
     if (!output.certificate) {
-        output.certificate = {}; // Ensure certificate object exists
+        output.certificate = { subject: '', pem: '' }; 
     }
-    if (typeof output.certificate.subject !== 'string') output.certificate.subject = `CN=${output.agentID || 'unknown'}.agent.example.com,O=${output.provider || 'UnknownProvider'},C=US`;
-    if (typeof output.certificate.pem !== 'string' || output.certificate.pem.trim() === '') {
-        output.certificate.pem = `-----BEGIN CERTIFICATE REQUEST-----\nMIICVDCCATwCAQAwWDELMAkGA1UEBhMCVVMxEDAOBgNVBAgMB0NvbG9yYWRvMQ8w\nDQYDVQQHDAZEZW52ZXIxDTALBgNVBAoMBEFjbWUxEjAQBgNVBAMMCW15YWdlbnQu\nY29tMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvEoM9kws+p2X\n...\n-----END CERTIFICATE REQUEST-----`;
+    if (typeof output.certificate.subject !== 'string' || output.certificate.subject.trim() === '') {
+        output.certificate.subject = `CN=${output.agentID || 'unknown'}.agent.example.com,O=${output.provider || 'UnknownProvider'},C=US`;
+        console.warn(`AI did not provide a valid certificate subject. Original: '${output.certificate.subject}'. Defaulting.`);
     }
-    // issuer is optional, can leave as is or default if empty and desired
-    // if (typeof output.certificate.issuer !== 'string') output.certificate.issuer = "CN=Mock CA";
+    if (typeof output.certificate.pem !== 'string' || output.certificate.pem.trim() === '' || !output.certificate.pem.startsWith('-----BEGIN CERTIFICATE REQUEST-----')) {
+        output.certificate.pem = `-----BEGIN CERTIFICATE REQUEST-----\nMIICVDCCATwCAQAwWDELMAkGA1UEBhMCVVMxEDAOBgNVBAgMB0NvbG9yYWRvMQ8w\nDQYDVQQHDAZEZW52ZXIxDTALBgNVBAoMBEFjbWUxEjAQBgNVBAMMCW15YWdlbnQu\nY29tMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvEoM9kws+p2X\nAGFBCdUMSUhG9MVYdGkKx9bM3XbS8T2h/7N2j8Dqcj6w8Q8c7g7rX6tA3x0E\nLZkPqQ+E8j7s0m5A/H3j8kM0B6n2c9wA+E0q/J9v9n8X3K7V9xM3c4Y8n8V\n-----END CERTIFICATE REQUEST-----`;
+        console.warn(`AI did not provide a valid certificate PEM (CSR). Original (start): '${output.certificate.pem?.substring(0,30)}'. Defaulting.`);
+    }
+    // issuer is optional in schema, so AI can leave it empty or provide one.
 
-
-    // Ensure 'protocolExtensions' is an object and has a description
     if (typeof output.protocolExtensions === 'string') {
         try {
             output.protocolExtensions = JSON.parse(output.protocolExtensions as string);
         } catch (e) {
             console.warn("AI returned string for protocolExtensions, but it's not valid JSON. Setting to default.", e);
-            output.protocolExtensions = { description: "Error parsing AI-generated protocolExtensions." };
+            output.protocolExtensions = { description: `Error parsing AI-generated protocolExtensions. Original string: ${output.protocolExtensions}` };
         }
     }
 
     if (typeof output.protocolExtensions !== 'object' || output.protocolExtensions === null) {
       output.protocolExtensions = { description: `Default agent description for ${output.agentID || 'agent'}.` };
+      console.warn(`ProtocolExtensions was not a valid object or was null. Defaulting.`);
     } else {
-      if (!output.protocolExtensions.description || String(output.protocolExtensions.description).trim() === "") {
+      if (typeof output.protocolExtensions.description !== 'string' || String(output.protocolExtensions.description).trim() === "") {
         output.protocolExtensions.description = `Agent for ${output.agentID || 'general purposes'} performing ${output.agentCapability || 'tasks'}.`;
+        console.warn(`ProtocolExtensions description was missing or empty. Defaulting.`);
       }
     }
+    
+    if (output.extension === undefined) { // Ensure extension is null if not provided a string value by AI
+        output.extension = null;
+    }
 
-    // Fill other potentially empty strings that the schema makes required (but allows empty string)
-    // if AI didn't fill them as per prompt.
-    if (typeof output.agentID !== 'string' || output.agentID.trim() === '') output.agentID = 'defaultAgentID';
-    if (typeof output.agentCapability !== 'string' || output.agentCapability.trim() === '') output.agentCapability = 'defaultCapability';
-    if (typeof output.provider !== 'string' || output.provider.trim() === '') output.provider = 'DefaultProvider';
-    // 'extension' can be null or string. If AI returns "", it's a string, which is fine.
 
     // --- End of Post-processing ---
 
-    // Validate against the GenerateRegistrationDetailsOutputSchema before returning
-    // This schema ensures all required fields are present and correctly typed.
     try {
         const validation = GenerateRegistrationDetailsOutputSchema.parse(output);
-        return validation; // Use the validated and potentially transformed data
+        return validation; 
     } catch (error) {
         if (error instanceof ZodError) {
             console.error("AI output failed Zod validation after post-processing:", error.format());
+            console.error("Problematic AI output object:", JSON.stringify(output, null, 2));
             throw new Error(`AI output validation failed: ${JSON.stringify(error.format())}`);
         }
         console.error("Unknown error during Zod validation:", error);
+        console.error("Problematic AI output object (unknown error):", JSON.stringify(output, null, 2));
         throw new Error("An unknown error occurred during AI output validation.");
     }
   }
 );
-
-    
