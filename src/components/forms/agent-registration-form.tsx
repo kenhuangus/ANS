@@ -36,6 +36,26 @@ const protocolOptions: { value: Protocol; label: string }[] = [
   { value: "acp", label: "ACP (Agent Communication Protocol)" },
 ];
 
+// Define comprehensive, valid sample values for all fields
+const completeSampleValues: AgentRegistrationRequestPayload = {
+    protocol: "a2a",
+    agentID: "sampleFormAgent",
+    agentCapability: "formSubmissionDemo",
+    provider: "FormDefaultProvider",
+    version: "1.0.0",
+    extension: "sample-ext", 
+    certificate: {
+        subject: "CN=sample.form.agent.example.com,O=FormDefaultProvider,C=US",
+        issuer: "CN=SampleLocalFormCA,O=SampleOrg,C=US",
+        pem: `-----BEGIN CERTIFICATE REQUEST-----\nMIICWjCCAbsCAQAwWzELMAkGA1UEBhMCVVMxEDAOBgNVBAgMB0FyaXpvbmExDjAM\nBgNVBAcMBVRlbXBlMRQwEgYDVQQKDAtTYW1wbGUgQ29ycDEUMBIGA1UEAwwLZXhh\nbXBsZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC4pY7/9gH7\nZfV7p8z9X9hM3w/tF6Z+s5F2e3k4v0KM3vN7v9gB5sP/G3z8K5vP4g7j8N4c5v/s\n2v7X6xR8vN2d4K8P9o/A6k5O8fP8Y6q/C4n2k7U5e8V2A3w9mB6y9r/J5kP/t3n\n5Gq7z8V6l8r/O9X7s8P/w4U3K9N/o7R2m+E9v9Q7x/F3m+Y9vC8p7K/P7j6D+M8\nN/R9qAgMBAAGgADANBgkqhkiG9w0BAQsFAAOCAQEABV35L/2D/4t/qV7P+Z/0\nE/jM9v+P3H/0F9hO7n9tF6Z/s5F2e3k4v0KM3vN7v9gB5sP/G3z8K5vP4g7j8N\n4c5v/s2v7X6xR8vN2d4K8P9o/A6k5O8fP8Y6q/C4n2k7U5e8V2A3w9mB6y9r/J\n5kP/t3n5Gq7z8V6l8r/O9X7s8P/w4U3K9N/o7R2m+E9v9Q7x/F3m+Y9vC8p7K\n-----END CERTIFICATE REQUEST-----`,
+    },
+    protocolExtensions: {
+        description: "A sample agent submitted with form defaults.",
+        source: "form-default-sample"
+    },
+    actualEndpoint: "https://api.formdefaultprovider.com/agents/sampleFormAgent/v1",
+};
+
 export function AgentRegistrationForm() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
@@ -44,21 +64,7 @@ export function AgentRegistrationForm() {
 
   const form = useForm<AgentRegistrationRequestPayload>({
     resolver: zodResolver(AgentRegistrationRequestBaseSchema),
-    defaultValues: { 
-      protocol: undefined, // Start with undefined or a basic valid default for Select
-      agentID: "",
-      agentCapability: "",
-      provider: "",
-      version: "", // e.g., "1.0.0" - user can clear or AI can fill
-      extension: "", // Can be empty, will be treated as null if schema allows
-      certificate: {
-        subject: "",
-        issuer: "", 
-        pem: "", 
-      },
-      protocolExtensions: {}, // Start with an empty object
-      actualEndpoint: "",
-    },
+    defaultValues: completeSampleValues, // Use complete sample values for initial form load
   });
 
   async function handleAiFill() {
@@ -91,29 +97,10 @@ export function AgentRegistrationForm() {
   async function onSubmit(formDataFromHook: AgentRegistrationRequestPayload) {
     setIsLoading(true);
     setRegistrationResult(null);
-
-    // Define comprehensive, valid sample values for all fields
-    // These will be used if the corresponding field in formDataFromHook is empty/missing
-    const completeSampleValues: Required<AgentRegistrationRequestPayload> = {
-        protocol: "a2a",
-        agentID: "sampleFormAgent",
-        agentCapability: "formSubmissionDemo",
-        provider: "FormDefaultProvider",
-        version: "1.0.0",
-        extension: "sample-ext", 
-        certificate: {
-            subject: "CN=sample.form.agent.example.com,O=FormDefaultProvider,C=US",
-            issuer: "CN=SampleLocalFormCA,O=SampleOrg,C=US",
-            pem: `-----BEGIN CERTIFICATE REQUEST-----\nMIICWjCCAbsCAQAwWzELMAkGA1UEBhMCVVMxEDAOBgNVBAgMB0FyaXpvbmExDjAM\nBgNVBAcMBVRlbXBlMRQwEgYDVQQKDAtTYW1wbGUgQ29ycDEUMBIGA1UEAwwLZXhh\nbXBsZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC4pY7/9gH7\nZfV7p8z9X9hM3w/tF6Z+s5F2e3k4v0KM3vN7v9gB5sP/G3z8K5vP4g7j8N4c5v/s\n2v7X6xR8vN2d4K8P9o/A6k5O8fP8Y6q/C4n2k7U5e8V2A3w9mB6y9r/J5kP/t3n\n5Gq7z8V6l8r/O9X7s8P/w4U3K9N/o7R2m+E9v9Q7x/F3m+Y9vC8p7K/P7j6D+M8\nN/R9qAgMBAAGgADANBgkqhkiG9w0BAQsFAAOCAQEABV35L/2D/4t/qV7P+Z/0\nE/jM9v+P3H/0F9hO7n9tF6Z/s5F2e3k4v0KM3vN7v9gB5sP/G3z8K5vP4g7j8N\n4c5v/s2v7X6xR8vN2d4K8P9o/A6k5O8fP8Y6q/C4n2k7U5e8V2A3w9mB6y9r/J\n5kP/t3n5Gq7z8V6l8r/O9X7s8P/w4U3K9N/o7R2m+E9v9Q7x/F3m+Y9vC8p7K\n-----END CERTIFICATE REQUEST-----`,
-        },
-        protocolExtensions: {
-            description: "A sample agent submitted with form defaults.",
-            source: "form-default-sample"
-        },
-        actualEndpoint: "https://api.formdefaultprovider.com/agents/sampleFormAgent/v1",
-    };
     
-    // Build the payload, using sample values for any field that is empty or not provided by the user
+    // Build the payload. Since defaultValues are now completeSampleValues,
+    // formDataFromHook will already have these defaults if user hasn't changed them.
+    // We still ensure type consistency and handle potentially empty strings if user cleared fields.
     const payload: AgentRegistrationRequestPayload = {
       protocol: formDataFromHook.protocol || completeSampleValues.protocol,
       agentID: formDataFromHook.agentID?.trim() || completeSampleValues.agentID,
@@ -136,7 +123,7 @@ export function AgentRegistrationForm() {
       const response = await fetch('/api/agents/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload), // Send the defaulted payload
+        body: JSON.stringify(payload),
       });
 
       const result = await response.json();
@@ -150,7 +137,7 @@ export function AgentRegistrationForm() {
         title: "Registration Attempted",
         description: result.message || `Agent ${result.ansName} registration processed.`,
       });
-      // form.reset(); // Optionally reset form after successful submission
+      // form.reset(completeSampleValues); // Optionally reset form to initial samples after successful submission
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
       toast({
@@ -168,7 +155,7 @@ export function AgentRegistrationForm() {
       <CardHeader>
         <CardTitle className="text-3xl text-primary">Register New Agent</CardTitle>
         <CardDescription>
-          Fill in the details below or use &quot;AI Fill Details&quot;. Empty fields will use sample values on submission.
+          Fill in the details below or use &quot;AI Fill Details&quot;.
           Certificate PEM should be a Certificate Signing Request (CSR).
         </CardDescription>
       </CardHeader>
@@ -191,7 +178,7 @@ export function AgentRegistrationForm() {
                   <Select onValueChange={field.onChange} value={field.value || ""} disabled={isAiLoading}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a protocol (or let AI choose/use sample)" />
+                        <SelectValue placeholder="Select a protocol" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -213,7 +200,7 @@ export function AgentRegistrationForm() {
               <FormField control={form.control} name="version" render={({ field }) => ( <FormItem> <FormLabel>Version (Semantic)</FormLabel> <FormControl><Input placeholder="e.g., 1.0.0" {...field} value={field.value || ""} disabled={isAiLoading}/></FormControl> <FormMessage /> </FormItem> )}/>
             </div>
              <FormField control={form.control} name="actualEndpoint" render={({ field }) => ( <FormItem> <FormLabel>Actual Network Endpoint URL</FormLabel> <FormControl><Input placeholder="https://api.example.com/agent" {...field} value={field.value || ""} disabled={isAiLoading}/></FormControl> <FormDescription>The resolvable URL where the agent can be reached.</FormDescription> <FormMessage /> </FormItem> )}/>
-            <FormField control={form.control} name="extension" render={({ field }) => ( <FormItem> <FormLabel>Extension</FormLabel> <FormControl><Input placeholder="e.g., hipaa, generic (optional)" {...field} value={field.value || ""} disabled={isAiLoading}/></FormControl> <FormDescription>Optional metadata. Will be null if left empty.</FormDescription> <FormMessage /> </FormItem> )}/>
+            <FormField control={form.control} name="extension" render={({ field }) => ( <FormItem> <FormLabel>Extension</FormLabel> <FormControl><Input placeholder="e.g., hipaa, generic (optional)" {...field} value={field.value === null ? "" : field.value || ""} disabled={isAiLoading}/></FormControl> <FormDescription>Optional metadata. Will be null if left empty.</FormDescription> <FormMessage /> </FormItem> )}/>
             
             <FormField control={form.control} name="certificate.subject" render={({ field }) => ( <FormItem> <FormLabel>Certificate Subject (for CSR)</FormLabel> <FormControl><Input placeholder="e.g., CN=myagent.example.com,O=MyOrg" {...field} value={field.value || ""} disabled={isAiLoading}/></FormControl> <FormMessage /> </FormItem> )}/>
             <FormField control={form.control} name="certificate.pem" render={({ field }) => ( <FormItem> <FormLabel>Certificate Signing Request (CSR PEM)</FormLabel> <FormControl><Textarea placeholder="-----BEGIN CERTIFICATE REQUEST-----..." {...field} value={field.value || ""} rows={7} disabled={isAiLoading}/></FormControl> <FormDescription>Paste CSR or let AI/sample provide one.</FormDescription> <FormMessage /> </FormItem> )}/>
@@ -228,11 +215,11 @@ export function AgentRegistrationForm() {
                   <FormControl>
                     <Textarea 
                       placeholder='e.g., {"description": "My cool agent"}' 
-                      value={field.value ? (typeof field.value === 'string' ? field.value : JSON.stringify(field.value, null, 2)) : ''}
+                      value={field.value ? (typeof field.value === 'string' ? field.value : JSON.stringify(field.value, null, 2)) : '{}'}
                       onChange={(e) => {
                         try {
                           const val = e.target.value;
-                          if (val.trim() === "") {
+                          if (val.trim() === "" || val.trim() === "{}") { // allow empty object
                             field.onChange({}); 
                           } else {
                             field.onChange(JSON.parse(val));
