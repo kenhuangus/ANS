@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { Protocol as AgentProtocolType } from '@/types'; // Renamed to avoid conflict
 
 export const semanticVersionPattern = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/;
-const ansNamePattern = /^(a2a|mcp|acp):\/\/([^.]+)\.([^.]+)\.([^.]+)\.v([^.]+)(?:\.([^.]+))?$/;
+export const ansNamePattern = /^(a2a|mcp|acp):\/\/([^.]+)\.([^.]+)\.([^.]+)\.v([^.]+)(?:\.([^.]+))?$/;
 
 
 export const CertificateSchema = z.object({
@@ -81,19 +81,18 @@ export type GenerateRegistrationDetailsInput = z.infer<typeof GenerateRegistrati
 
 // The output schema for the AI flow. This ensures all fields AI is supposed to fill are present and valid.
 export const GenerateRegistrationDetailsOutputSchema = AgentRegistrationRequestBaseSchema.extend({
-  protocol: z.enum(["a2a", "mcp", "acp"]), // Required
-  agentID: z.string().min(1, "Agent ID cannot be empty"), // Required and non-empty
-  agentCapability: z.string().min(1, "Agent Capability cannot be empty"), // Required and non-empty
-  provider: z.string().min(1, "Provider cannot be empty"), // Required and non-empty
-  version: z.string().regex(semanticVersionPattern, "Version must be in Semantic Versioning format."), // Required
-  extension: z.string().nullable(), // Required (can be null)
-  certificate: CertificateSchema.extend({ // Certificate object is required
-    subject: z.string().min(1, "Certificate subject cannot be empty"), // CSR subject is important
-    pem: z.string().min(1, "Certificate PEM (CSR) cannot be empty") // CSR PEM is important
-    // issuer can remain optional within certificate
+  protocol: z.enum(["a2a", "mcp", "acp"]),
+  agentID: z.string().min(1, "Agent ID cannot be empty"),
+  agentCapability: z.string().min(1, "Agent Capability cannot be empty"),
+  provider: z.string().min(1, "Provider cannot be empty"),
+  version: z.string().regex(semanticVersionPattern, "Version must be in Semantic Versioning format."),
+  extension: z.string().nullable(), 
+  certificate: CertificateSchema.extend({
+    subject: z.string().min(1, "Certificate subject cannot be empty"),
+    pem: z.string().min(1, "Certificate PEM (CSR) cannot be empty")
   }),
-  protocolExtensions: z.record(z.string(), z.any()).nullable(), // Required (can be null), ensuring it's an object if not null
-  actualEndpoint: z.string().url("Actual endpoint must be a valid URL."), // Required
+  protocolExtensions: z.record(z.string(), z.any()).nullable(), 
+  actualEndpoint: z.string().url("Actual endpoint must be a valid URL."),
 }).describe("Completed agent registration details, with AI-generated values for any missing fields. All base fields are now required, and some have stricter non-empty constraints for AI output.");
 export type GenerateRegistrationDetailsOutput = z.infer<typeof GenerateRegistrationDetailsOutputSchema>;
 
@@ -103,12 +102,11 @@ export const GenerateRenewalDetailsInputSchema = AgentRenewalRequestBaseSchema.p
 export type GenerateRenewalDetailsInput = z.infer<typeof GenerateRenewalDetailsInputSchema>;
 
 export const GenerateRenewalDetailsOutputSchema = AgentRenewalRequestBaseSchema.extend({
-  ansName: z.string().regex(ansNamePattern, "Invalid ANSName format."), // Required for renewal
-  certificate: CertificateSchema.extend({ // Certificate object is required
+  ansName: z.string().regex(ansNamePattern, "Invalid ANSName format."), 
+  certificate: CertificateSchema.extend({ 
     subject: z.string().min(1, "Certificate subject cannot be empty for renewal CSR"),
     pem: z.string().min(1, "Certificate PEM (CSR) cannot be empty for renewal")
   }),
-  // actualEndpoint and protocolExtensions remain optional as per AgentRenewalRequestBaseSchema
 }).describe("Completed agent renewal details. 'ansName' and 'certificate' (with subject and PEM) are required. Other fields AI-generated if missing.");
 export type GenerateRenewalDetailsOutput = z.infer<typeof GenerateRenewalDetailsOutputSchema>;
 
@@ -118,7 +116,7 @@ export const GenerateLookupDetailsInputSchema = AgentCapabilityRequestBaseSchema
 export type GenerateLookupDetailsInput = z.infer<typeof GenerateLookupDetailsInputSchema>;
 
 export const GenerateLookupDetailsOutputSchema = AgentCapabilityRequestBaseSchema.extend({
-  requestType: z.literal("resolve").default("resolve") // Ensure requestType is always 'resolve'
+  requestType: z.literal("resolve").default("resolve")
 }).describe("Completed agent lookup details, with AI-generated or structured values for missing/partial fields.");
 export type GenerateLookupDetailsOutput = z.infer<typeof GenerateLookupDetailsOutputSchema>;
 
