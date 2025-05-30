@@ -37,23 +37,30 @@ export function AgentLookupForm() {
     resolver: zodResolver(AgentCapabilityRequestSchema),
     defaultValues: {
       requestType: "resolve",
-      ansName: "",
-      protocol: undefined,
-      agentID: "",
-      agentCapability: "",
-      provider: "",
-      version: "",
-      extension: "",
+      ansName: "", // e.g., "a2a://translator.text.AcmeCorp.v1.0"
+      protocol: undefined, // User can select or AI can suggest
+      agentID: "", // e.g., "translator"
+      agentCapability: "", // e.g., "text"
+      provider: "", // e.g., "AcmeCorp"
+      version: "", // e.g., "1.0" or "1.x" or "*"
+      extension: "", // e.g., "hipaa"
     },
   });
 
   async function onSubmit(data: AgentCapabilityRequestPayload) {
     setIsLoading(true);
     setLookupResults([]);
+
+    // TODO: In a future step, if fields are empty, call a Genkit flow to populate them
+    // or to decide if enough information is present for a meaningful lookup.
+
     try {
       const queryParams = new URLSearchParams();
+      // Ensure requestType is always sent if not explicitly set (though schema now makes it optional)
+      queryParams.append('requestType', data.requestType || 'resolve');
+
       Object.entries(data).forEach(([key, value]) => {
-        if (value !== undefined && value !== "") {
+        if (key !== 'requestType' && value !== undefined && value !== null && String(value).trim() !== "") {
           queryParams.append(key, String(value));
         }
       });
@@ -65,7 +72,7 @@ export function AgentLookupForm() {
         throw new Error(result.error || "Lookup failed");
       }
       
-      setLookupResults(Array.isArray(result) ? result : [result]); // API might return single or array
+      setLookupResults(Array.isArray(result) ? result : (result ? [result] : [])); 
       if (Array.isArray(result) ? result.length === 0 : !result) {
          toast({
           title: "Lookup Complete",
@@ -96,7 +103,7 @@ export function AgentLookupForm() {
         <CardHeader>
           <CardTitle className="text-3xl text-primary">Lookup Agent</CardTitle>
           <CardDescription>
-            Search for agents by their full ANSName or by specific capabilities and attributes.
+            Search for agents by full ANSName or attributes. Fields are optional.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -107,15 +114,15 @@ export function AgentLookupForm() {
                 name="ansName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Full ANSName (Optional)</FormLabel>
-                    <FormControl><Input placeholder="e.g., a2a://translator.text.AcmeCorp.v1.0" {...field} /></FormControl>
-                    <FormDescription>If provided, other fields below will be ignored for direct lookup.</FormDescription>
+                    <FormLabel>Full ANSName (Primary Search)</FormLabel>
+                    <FormControl><Input placeholder="e.g., a2a://translator.text.AcmeCorp.v1.0" {...field} value={field.value || ""} /></FormControl>
+                    <FormDescription>If provided, other attribute fields may be less critical.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              <p className="text-sm text-muted-foreground pt-2">Or search by attributes:</p>
+              <p className="text-sm text-muted-foreground pt-2">Or search by attributes (all optional):</p>
               
               <FormField
                 control={form.control}
@@ -123,13 +130,14 @@ export function AgentLookupForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Protocol</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value || ""}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select a protocol" />
+                          <SelectValue placeholder="Select a protocol (optional)" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        <SelectItem value="">Any Protocol</SelectItem>
                         {protocolOptions.map(opt => (
                           <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                         ))}
@@ -140,14 +148,14 @@ export function AgentLookupForm() {
                 )}
               />
               <div className="grid md:grid-cols-2 gap-4">
-                <FormField control={form.control} name="agentID" render={({ field }) => ( <FormItem> <FormLabel>Agent ID</FormLabel> <FormControl><Input placeholder="e.g., translator" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                <FormField control={form.control} name="agentCapability" render={({ field }) => ( <FormItem> <FormLabel>Capability</FormLabel> <FormControl><Input placeholder="e.g., text" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                <FormField control={form.control} name="agentID" render={({ field }) => ( <FormItem> <FormLabel>Agent ID</FormLabel> <FormControl><Input placeholder="e.g., translator" {...field} value={field.value || ""} /></FormControl> <FormMessage /> </FormItem> )} />
+                <FormField control={form.control} name="agentCapability" render={({ field }) => ( <FormItem> <FormLabel>Capability</FormLabel> <FormControl><Input placeholder="e.g., text" {...field} value={field.value || ""} /></FormControl> <FormMessage /> </FormItem> )} />
               </div>
               <div className="grid md:grid-cols-2 gap-4">
-                <FormField control={form.control} name="provider" render={({ field }) => ( <FormItem> <FormLabel>Provider</FormLabel> <FormControl><Input placeholder="e.g., AcmeCorp" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                <FormField control={form.control} name="version" render={({ field }) => ( <FormItem> <FormLabel>Version</FormLabel> <FormControl><Input placeholder="e.g., 1.0 or 1.x or *" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                <FormField control={form.control} name="provider" render={({ field }) => ( <FormItem> <FormLabel>Provider</FormLabel> <FormControl><Input placeholder="e.g., AcmeCorp" {...field} value={field.value || ""} /></FormControl> <FormMessage /> </FormItem> )} />
+                <FormField control={form.control} name="version" render={({ field }) => ( <FormItem> <FormLabel>Version</FormLabel> <FormControl><Input placeholder="e.g., 1.0 or 1.x or *" {...field} value={field.value || ""} /></FormControl> <FormMessage /> </FormItem> )} />
               </div>
-              <FormField control={form.control} name="extension" render={({ field }) => ( <FormItem> <FormLabel>Extension (Optional)</FormLabel> <FormControl><Input placeholder="e.g., hipaa" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+              <FormField control={form.control} name="extension" render={({ field }) => ( <FormItem> <FormLabel>Extension</FormLabel> <FormControl><Input placeholder="e.g., hipaa" {...field} value={field.value || ""} /></FormControl> <FormMessage /> </FormItem> )} />
               
               <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isLoading}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

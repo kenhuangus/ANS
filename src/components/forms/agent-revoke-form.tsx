@@ -39,16 +39,17 @@ export function AgentRevocationForm() {
   const form = useForm<AgentRevocationRequestPayload>({
     resolver: zodResolver(AgentRevocationRequestSchema),
     defaultValues: {
-      ansName: "",
+      ansName: "a2a://agentToBeRevoked.service.MyOrg.v1.0",
     },
   });
 
   async function handleRevokeConfirm() {
     setShowConfirmDialog(false);
-    const data = form.getValues(); // Get current form values
+    const data = form.getValues(); 
     setIsLoading(true);
     setRevocationResult(null);
-
+    // TODO: In a future step, if ansName is empty, call a Genkit flow to suggest one or pick from a list.
+    // For now, the backend will validate if ansName is present.
     try {
       const response = await fetch('/api/agents/revoke', {
         method: 'POST',
@@ -63,10 +64,10 @@ export function AgentRevocationForm() {
       
       setRevocationResult(result as AgentRevocationResponse);
       toast({
-        title: "Revocation Successful",
-        description: `Agent ${result.ansName} has been revoked.`,
+        title: "Revocation Attempted",
+        description: result.message || `Agent ${result.ansName} revocation processed.`,
       });
-      form.reset();
+      // form.reset();
     } catch (error) {
        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
       toast({
@@ -80,6 +81,16 @@ export function AgentRevocationForm() {
   }
   
   function onSubmitWithConfirm(_data: AgentRevocationRequestPayload) {
+    // Client-side check before showing dialog
+    const currentAnsName = form.getValues().ansName;
+    if (!currentAnsName || currentAnsName.trim() === "") {
+      toast({
+        title: "ANSName Required",
+        description: "Please enter the ANSName of the agent to revoke.",
+        variant: "destructive",
+      });
+      return;
+    }
     setShowConfirmDialog(true);
   }
 
@@ -92,7 +103,7 @@ export function AgentRevocationForm() {
           Revoke Agent Registration
         </CardTitle>
         <CardDescription>
-          Enter the ANSName of the agent to revoke its registration. This action is irreversible.
+          Enter the ANSName of the agent to revoke. This action is irreversible.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -104,7 +115,7 @@ export function AgentRevocationForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>ANSName of Agent to Revoke</FormLabel>
-                  <FormControl><Input placeholder="e.g., a2a://rogueagent.service.MyOrg.v1.0" {...field} className="border-destructive focus:ring-destructive" /></FormControl>
+                  <FormControl><Input placeholder="e.g., a2a://rogueagent.service.MyOrg.v1.0" {...field} value={field.value || ""} className="border-destructive focus:ring-destructive" /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}

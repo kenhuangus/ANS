@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { AgentCapabilityRequestSchema } from '@/lib/schemas';
 import { findAgentByAnsName, findAgents } from '@/lib/db';
 import { parseANSName, versionNegotiation } from '@/lib/ans';
-import { AGENT_REGISTRY_CERTIFICATE_PEM, AGENT_REGISTRY_PRIVATE_KEY_PEM, signData, verifyCertificateChain, checkCertificateRevocation } from '@/lib/pki';
+import { AGENT_REGISTRY_CERTIFICATE_PEM, AGENT_REGISTRY_PRIVATE_KEY_PEM, signData, verifyCertificateChain, checkCertificateRevocation, LOCAL_CA_CERTIFICATE_PEM } from '@/lib/pki';
 import type { AgentRecord, Protocol } from '@/types';
 import type { AgentCapabilityRequestPayload } from '@/lib/schemas';
 
@@ -11,12 +11,14 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const queryData: Partial<AgentCapabilityRequestPayload> = {
-      requestType: "resolve", // default or from query
+      // requestType will default to 'resolve' if not in query due to schema optionality
     };
     
+    // Populate queryData from searchParams
+    if (searchParams.has('requestType')) queryData.requestType = "resolve"; // only "resolve" is supported
     if (searchParams.has('ansName')) queryData.ansName = searchParams.get('ansName')!;
     if (searchParams.has('protocol')) queryData.protocol = searchParams.get('protocol') as Protocol;
-    if (searchParams.has('agentID')) queryData.agentID = searchParams.get('agentID')!;
+    if (search_params.has('agentID')) queryData.agentID = search_params.get('agentID')!; // Fix: searchParams was search_params
     if (searchParams.has('agentCapability')) queryData.agentCapability = searchParams.get('agentCapability')!;
     if (searchParams.has('provider')) queryData.provider = searchParams.get('provider')!;
     if (searchParams.has('version')) queryData.version = searchParams.get('version')!;
@@ -29,21 +31,35 @@ export async function GET(request: NextRequest) {
     }
     const data = validation.data;
 
+    // If no meaningful parameters are provided for lookup, return an error.
+    const hasAnsName = data.ansName && data.ansName.trim() !== "";
+    const hasSufficientAttributes = data.protocol && data.agentID && data.agentCapability && data.provider && data.version;
+    const hasAnyAttribute = data.protocol || data.agentID || data.agentCapability || data.provider || data.version || data.extension;
+
+    if (!hasAnsName && !hasAnyAttribute) { // If no ANS name and no other attribute is specified at all.
+         return NextResponse.json({ error: "At least one lookup parameter (ansName or specific attributes) must be provided." }, { status: 400 });
+    }
+    if (!hasAnsName && !hasSufficientAttributes && hasAnyAttribute) { // If some attributes but not enough for a non-ANSName lookup
+        // This condition might be too strict if partial searches are desired.
+        // For now, we allow partial attribute search.
+        // The `findAgents` function will return matches based on what's provided.
+    }
+
+
     let resolvedAgents: AgentRecord[] = [];
 
     if (data.ansName) {
-      // Direct lookup by full ANSName
-      // For version negotiation with full ANSName, the version in ANSName is the target
       const parsed = parseANSName(data.ansName);
       if (!parsed) {
         return NextResponse.json({ error: "Invalid ANSName format" }, { status: 400 });
       }
+      // For version negotiation with full ANSName, the version in ANSName is the target
       const agentsWithSameBase = await findAgents(
         parsed.protocol,
         parsed.agentId,
         parsed.capability,
         parsed.provider,
-        undefined, // fetch all versions first
+        undefined, // fetch all versions first for this base
         parsed.extension || undefined
       );
       const agent = versionNegotiation(agentsWithSameBase, parsed.version);
@@ -56,32 +72,30 @@ export async function GET(request: NextRequest) {
         data.agentID,
         data.agentCapability,
         data.provider,
-        undefined, // fetch all versions for this base
-        data.extension
+        undefined, 
+        data.extension || undefined
       );
       
-      // Perform version negotiation if a specific version range was requested
       if (data.version && data.version !== "*") {
-        const agent = versionNegotiation(matchedAgents, data.version);
-        if (agent) resolvedAgents.push(agent);
-      } else { // If version is "*" or not specified, return all matched (or highest if that's the policy)
-        // For simplicity, returning all compatible. Paper implies returning one negotiated match.
-        // If only one match is expected, use:
-        // const agent = versionNegotiation(matchedAgents, data.version || "*");
-        // if (agent) resolvedAgents.push(agent);
-        resolvedAgents = matchedAgents; // returning all matching base agents if version is wildcard
+        const suitableAgentsForVersion = [];
+        for (const potentialAgent of matchedAgents) {
+            // versionNegotiation expects an array, so wrap each agent
+            const agent = versionNegotiation([potentialAgent], data.version);
+            if (agent) suitableAgentsForVersion.push(agent);
+        }
+        resolvedAgents = suitableAgentsForVersion;
+      } else { 
+        resolvedAgents = matchedAgents; 
       }
     }
 
     if (resolvedAgents.length === 0) {
-      return NextResponse.json([], { status: 200 }); // Return empty array if no agent found, not 404
+      return NextResponse.json([], { status: 200 }); 
     }
 
-    // Formal Resolution Algorithm Step 5-8 (VerifyAgentEndpointRecord)
     const verifiedResponses = [];
     for (const agent of resolvedAgents) {
-      // 1. Verify agent's certificate (ensure it's valid and not revoked - mocked)
-      const isAgentCertValid = await verifyCertificateChain(agent.certificatePem, LOCAL_CA_CERTIFICATE_PEM /* Assuming local CA is trusted root for agent certs */);
+      const isAgentCertValid = await verifyCertificateChain(agent.certificatePem, LOCAL_CA_CERTIFICATE_PEM);
       const isAgentCertRevoked = await checkCertificateRevocation(agent.certificatePem);
 
       if (!isAgentCertValid || isAgentCertRevoked) {
@@ -89,7 +103,6 @@ export async function GET(request: NextRequest) {
         continue; 
       }
 
-      // Construct data to be signed by Agent Registry
       const dataToSign = JSON.stringify({
         Endpoint: agent.ansName,
         actualEndpoint: agent.actualEndpoint,
@@ -97,25 +110,26 @@ export async function GET(request: NextRequest) {
         ttl: agent.ttl,
       });
 
-      // Sign with Agent Registry's private key
       const registrySignature = await signData(dataToSign, AGENT_REGISTRY_PRIVATE_KEY_PEM);
       
       verifiedResponses.push({
-        Endpoint: agent.ansName, // This is the Agent's ANSName
+        Endpoint: agent.ansName,
         actualEndpoint: agent.actualEndpoint,
-        agentCertificatePem: agent.certificatePem, // The resolved agent's certificate
+        agentCertificatePem: agent.certificatePem,
         registrySignature: registrySignature,
-        registryCertificatePem: AGENT_REGISTRY_CERTIFICATE_PEM, // The Agent Registry's certificate
+        registryCertificatePem: AGENT_REGISTRY_CERTIFICATE_PEM,
         ttl: agent.ttl,
       });
     }
     
-    if (verifiedResponses.length === 0) {
+    if (verifiedResponses.length === 0 && resolvedAgents.length > 0) {
+        // This means agents were found but none passed verification
+        return NextResponse.json({ error: "Agents found but failed verification (certificate invalid/revoked)." }, { status: 404 }); // Or 200 with empty array?
+    }
+     if (verifiedResponses.length === 0) { // No agents found or none verified
          return NextResponse.json([], { status: 200 });
     }
 
-    // If the original request implies a single agent (e.g. by full ANSName), return the single verified response.
-    // Otherwise, return an array. For simplicity here, always returning array.
     return NextResponse.json(verifiedResponses, { status: 200 });
 
   } catch (error) {

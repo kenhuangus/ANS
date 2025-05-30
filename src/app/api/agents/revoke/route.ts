@@ -14,17 +14,16 @@ export async function POST(request: NextRequest) {
 
     const data: AgentRevocationRequestPayload = validation.data;
 
+    // ansName is essential for revocation
+    if (!data.ansName) {
+        return NextResponse.json({ error: "ANSName is required for revocation." }, { status: 400 });
+    }
+
     const existingAgent = await findAgentByAnsName(data.ansName);
     if (!existingAgent) {
-      // If agent is already revoked, findAgentByAnsName (which checks !isRevoked) would return null.
-      // So we can check if it was ever registered or already revoked.
-      // const potentiallyRevokedAgent = agentsDB.find(a => a.ansName === data.ansName); // Direct DB check
-      // if (potentiallyRevokedAgent && potentiallyRevokedAgent.isRevoked) {
-      //    return NextResponse.json({ error: `Agent "${data.ansName}" is already revoked.` }, { status: 409 });
-      // }
       return NextResponse.json({ error: `Agent with ANSName "${data.ansName}" not found or already revoked.` }, { status: 404 });
     }
-    if (existingAgent.isRevoked) {
+    if (existingAgent.isRevoked) { // This check is technically redundant if findAgentByAnsName only returns non-revoked
          return NextResponse.json({ error: `Agent "${data.ansName}" is already revoked.` }, { status: 409 });
     }
 
@@ -32,8 +31,6 @@ export async function POST(request: NextRequest) {
     const success = await revokeAgent(data.ansName);
 
     if (!success) {
-      // This case implies agent was found initially but couldn't be marked as revoked in mock DB,
-      // or was not found by revokeAgent for some reason.
       return NextResponse.json({ error: `Failed to revoke agent "${data.ansName}". Agent might not exist or already revoked.` }, { status: 404 });
     }
 

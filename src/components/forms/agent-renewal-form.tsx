@@ -29,20 +29,22 @@ export function AgentRenewalForm() {
   const form = useForm<AgentRenewalRequestPayload>({
     resolver: zodResolver(AgentRenewalRequestSchema),
     defaultValues: {
-      ansName: "",
+      ansName: "a2a://myExistingAgent.service.MyOrg.v1.0",
       certificate: {
-        subject: "", // Should ideally be pre-filled or same as existing
-        issuer: "CN=Local Mock CA", // Default issuer for new CSR
-        pem: "",
+        subject: "CN=myexistingagent.myorg.com,O=MyOrg,C=US", 
+        issuer: "CN=Local Mock CA",
+        pem: "", // User or AI will provide new CSR
       },
       protocolExtensions: {},
-      actualEndpoint: "",
+      actualEndpoint: "https://api.myorg.com/agents/myExistingAgent/v2",
     },
   });
 
   async function onSubmit(data: AgentRenewalRequestPayload) {
     setIsLoading(true);
     setRenewalResult(null);
+    // TODO: In a future step, if fields are empty, call a Genkit flow to populate them.
+    // For now, the backend will validate if essential fields are present.
     try {
       const response = await fetch('/api/agents/renew', {
         method: 'POST',
@@ -57,10 +59,10 @@ export function AgentRenewalForm() {
       
       setRenewalResult(result as AgentRenewalResponse);
       toast({
-        title: "Renewal Successful",
-        description: `Agent ${result.ansName} renewed.`,
+        title: "Renewal Attempted",
+        description: result.message || `Agent ${result.ansName} renewal processed.`,
       });
-      form.reset();
+      // form.reset();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
       toast({
@@ -78,7 +80,7 @@ export function AgentRenewalForm() {
       <CardHeader>
         <CardTitle className="text-2xl text-primary">Renew Agent Registration</CardTitle>
         <CardDescription>
-          Provide the ANSName of the agent and a new Certificate Signing Request (CSR).
+          Provide the ANSName of the agent and a new Certificate Signing Request (CSR). Fields are optional.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -90,7 +92,7 @@ export function AgentRenewalForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>ANSName of Agent to Renew</FormLabel>
-                  <FormControl><Input placeholder="e.g., a2a://oldagent.service.MyOrg.v1.0" {...field} /></FormControl>
+                  <FormControl><Input placeholder="e.g., a2a://oldagent.service.MyOrg.v1.0" {...field} value={field.value || ""} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -101,7 +103,7 @@ export function AgentRenewalForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Certificate Subject (for new CSR)</FormLabel>
-                  <FormControl><Input placeholder="Should match existing or be new subject" {...field} /></FormControl>
+                  <FormControl><Input placeholder="Should match existing or be new subject" {...field} value={field.value || ""} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -112,7 +114,7 @@ export function AgentRenewalForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>New Certificate Signing Request (CSR PEM)</FormLabel>
-                  <FormControl><Textarea placeholder="-----BEGIN CERTIFICATE REQUEST-----..." {...field} rows={7} /></FormControl>
+                  <FormControl><Textarea placeholder="-----BEGIN CERTIFICATE REQUEST-----..." {...field} value={field.value || ""} rows={7} /></FormControl>
                   <FormDescription>Paste the full PEM-encoded CSR for renewal.</FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -123,9 +125,9 @@ export function AgentRenewalForm() {
                 name="actualEndpoint"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>New/Updated Actual Network Endpoint URL (Optional)</FormLabel>
-                    <FormControl><Input placeholder="https://api.example.com/agent/v2" {...field} /></FormControl>
-                    <FormDescription>Leave blank if unchanged.</FormDescription>
+                    <FormLabel>New/Updated Actual Network Endpoint URL</FormLabel>
+                    <FormControl><Input placeholder="https://api.example.com/agent/v2" {...field} value={field.value || ""} /></FormControl>
+                    <FormDescription>Can be left blank if unchanged.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -135,24 +137,27 @@ export function AgentRenewalForm() {
               name="protocolExtensions"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Updated Protocol Extensions (JSON, Optional)</FormLabel>
+                  <FormLabel>Updated Protocol Extensions (JSON)</FormLabel>
                   <FormControl>
                     <Textarea 
-                      placeholder='e.g., {"description": "Updated agent description"}' 
-                      {...field}
+                      placeholder='e.g., {"description": "Updated agent description"}'
+                      value={field.value ? (typeof field.value === 'string' ? field.value : JSON.stringify(field.value, null, 2)) : ''}
                       onChange={(e) => {
                         try {
-                          const parsedJson = JSON.parse(e.target.value);
-                          field.onChange(parsedJson);
+                          const val = e.target.value;
+                          if (val === "") {
+                            field.onChange(null); 
+                          } else {
+                            field.onChange(JSON.parse(val));
+                          }
                         } catch (error) {
                            field.onChange(e.target.value);
                         }
                       }}
-                      value={field.value ? (typeof field.value === 'string' ? field.value : JSON.stringify(field.value, null, 2)) : ''}
                       rows={3}
                     />
                   </FormControl>
-                  <FormDescription>Update protocol-specific data if needed. Leave blank if no changes.</FormDescription>
+                  <FormDescription>Update protocol-specific data if needed. Can be left blank.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -166,7 +171,7 @@ export function AgentRenewalForm() {
 
         {renewalResult && (
           <Card className="mt-6 bg-secondary">
-            <CardHeader><CardTitle>Renewal Successful!</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Renewal Processed</CardTitle></CardHeader>
             <CardContent className="space-y-2 text-sm">
               <p><strong>ANSName:</strong> {renewalResult.ansName}</p>
               <p><strong>Message:</strong> {renewalResult.message}</p>

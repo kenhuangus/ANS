@@ -43,24 +43,28 @@ export function AgentRegistrationForm() {
     resolver: zodResolver(AgentRegistrationRequestSchema),
     defaultValues: {
       protocol: "a2a",
-      agentID: "",
-      agentCapability: "",
-      provider: "",
+      agentID: "mySampleAgent",
+      agentCapability: "dataProcessing",
+      provider: "MyCompany",
       version: "1.0.0",
       extension: "",
       certificate: {
-        subject: "",
-        issuer: "CN=Local Mock CA", // Default issuer for CSR
-        pem: "",
+        subject: "CN=myagent.mycompany.com,O=MyCompany,C=US",
+        issuer: "CN=Local Mock CA", 
+        pem: "", // User or AI will provide CSR
       },
       protocolExtensions: {},
-      actualEndpoint: "",
+      actualEndpoint: "https://api.mycompany.com/agents/mySampleAgent",
     },
   });
 
   async function onSubmit(data: AgentRegistrationRequestPayload) {
     setIsLoading(true);
     setRegistrationResult(null);
+
+    // TODO: In a future step, if fields are empty, call a Genkit flow to populate them.
+    // For now, the backend will validate if essential fields are present.
+
     try {
       const response = await fetch('/api/agents/register', {
         method: 'POST',
@@ -76,10 +80,11 @@ export function AgentRegistrationForm() {
       
       setRegistrationResult(result as AgentRegistrationResponse);
       toast({
-        title: "Registration Successful",
-        description: `Agent ${result.ansName} registered.`,
+        title: "Registration Attempted",
+        description: result.message || `Agent ${result.ansName} registration processed.`,
       });
-      form.reset();
+      // Optionally reset form or update with AI generated values if that was part of the flow
+      // form.reset(); 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
       toast({
@@ -97,7 +102,7 @@ export function AgentRegistrationForm() {
       <CardHeader>
         <CardTitle className="text-3xl text-primary">Register New Agent</CardTitle>
         <CardDescription>
-          Fill in the details below to register your agent with the AgentVerse Directory.
+          Fill in the details below. Fields are optional; AI can assist with defaults in a future update.
           The certificate PEM should be a Certificate Signing Request (CSR).
         </CardDescription>
       </CardHeader>
@@ -110,7 +115,7 @@ export function AgentRegistrationForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Communication Protocol</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value || "a2a"}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select a protocol" />
@@ -133,7 +138,7 @@ export function AgentRegistrationForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Agent ID</FormLabel>
-                    <FormControl><Input placeholder="e.g., textProcessor" {...field} /></FormControl>
+                    <FormControl><Input placeholder="e.g., textProcessor" {...field} value={field.value || ""} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -144,7 +149,7 @@ export function AgentRegistrationForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Agent Capability</FormLabel>
-                    <FormControl><Input placeholder="e.g., DocumentTranslation" {...field} /></FormControl>
+                    <FormControl><Input placeholder="e.g., DocumentTranslation" {...field} value={field.value || ""} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -157,7 +162,7 @@ export function AgentRegistrationForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Provider</FormLabel>
-                    <FormControl><Input placeholder="e.g., AcmeCorp" {...field} /></FormControl>
+                    <FormControl><Input placeholder="e.g., AcmeCorp" {...field} value={field.value || ""} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -168,7 +173,7 @@ export function AgentRegistrationForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Version (Semantic)</FormLabel>
-                    <FormControl><Input placeholder="e.g., 1.0.0 or 2.1.0-beta" {...field} /></FormControl>
+                    <FormControl><Input placeholder="e.g., 1.0.0" {...field} value={field.value || ""} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -180,7 +185,7 @@ export function AgentRegistrationForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Actual Network Endpoint URL</FormLabel>
-                    <FormControl><Input placeholder="https://api.example.com/agent" {...field} /></FormControl>
+                    <FormControl><Input placeholder="https://api.example.com/agent" {...field} value={field.value || ""} /></FormControl>
                     <FormDescription>The resolvable URL where the agent can be reached.</FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -191,8 +196,8 @@ export function AgentRegistrationForm() {
               name="extension"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Extension (Optional)</FormLabel>
-                  <FormControl><Input placeholder="e.g., hipaa, secure" {...field} /></FormControl>
+                  <FormLabel>Extension</FormLabel>
+                  <FormControl><Input placeholder="e.g., hipaa, secure (optional)" {...field} value={field.value || ""} /></FormControl>
                   <FormDescription>Optional metadata for deployment or provider specifics.</FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -204,7 +209,7 @@ export function AgentRegistrationForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Certificate Subject (for CSR)</FormLabel>
-                  <FormControl><Input placeholder="e.g., CN=myagent.example.com,O=MyOrg" {...field} /></FormControl>
+                  <FormControl><Input placeholder="e.g., CN=myagent.example.com,O=MyOrg" {...field} value={field.value || ""} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -215,7 +220,7 @@ export function AgentRegistrationForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Certificate Signing Request (CSR PEM)</FormLabel>
-                  <FormControl><Textarea placeholder="-----BEGIN CERTIFICATE REQUEST-----..." {...field} rows={7} /></FormControl>
+                  <FormControl><Textarea placeholder="-----BEGIN CERTIFICATE REQUEST-----..." {...field} value={field.value || ""} rows={7} /></FormControl>
                   <FormDescription>Paste the full PEM-encoded CSR here.</FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -226,22 +231,25 @@ export function AgentRegistrationForm() {
               name="protocolExtensions"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Protocol Extensions (JSON, Optional)</FormLabel>
+                  <FormLabel>Protocol Extensions (JSON)</FormLabel>
                   <FormControl>
                     <Textarea 
                       placeholder='e.g., {"description": "My cool agent", "mcpToolId": "tool-123"}' 
-                      {...field}
+                      value={field.value ? (typeof field.value === 'string' ? field.value : JSON.stringify(field.value, null, 2)) : ''}
                       onChange={(e) => {
                         try {
-                          const parsedJson = JSON.parse(e.target.value);
-                          field.onChange(parsedJson);
+                          // Attempt to parse if it's a string, otherwise pass as is (e.g. if it's already an object from AI)
+                          const val = e.target.value;
+                          if (val === "") {
+                            field.onChange(null); // Allow clearing to empty object or null
+                          } else {
+                            field.onChange(JSON.parse(val));
+                          }
                         } catch (error) {
-                           // Keep string in field, let Zod validation handle it
+                           // Keep string in field if not valid JSON, let Zod validation handle final check
                            field.onChange(e.target.value);
                         }
                       }}
-                      // value={typeof field.value === 'object' ? JSON.stringify(field.value, null, 2) : field.value || ''}
-                      value={field.value ? (typeof field.value === 'string' ? field.value : JSON.stringify(field.value, null, 2)) : ''}
                       rows={5}
                     />
                   </FormControl>
@@ -259,7 +267,7 @@ export function AgentRegistrationForm() {
         {registrationResult && (
           <Card className="mt-6 bg-secondary">
             <CardHeader>
-              <CardTitle>Registration Successful!</CardTitle>
+              <CardTitle>Registration Processed</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               <p><strong>ANSName:</strong> {registrationResult.ansName}</p>

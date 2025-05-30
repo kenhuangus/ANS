@@ -15,6 +15,13 @@ export async function POST(request: NextRequest) {
 
     const data: AgentRenewalRequestPayload = validation.data;
 
+    // Essential data for renewal, even if schema is all optional for AI-fill
+    if (!data.ansName || !data.certificate?.pem || !data.certificate?.subject) {
+      return NextResponse.json({ 
+        error: "Missing essential agent information for renewal. Required: ansName, certificate PEM and subject." 
+      }, { status: 400 });
+    }
+
     const existingAgent = await findAgentByAnsName(data.ansName);
     if (!existingAgent || existingAgent.isRevoked) {
       return NextResponse.json({ error: `Agent with ANSName "${data.ansName}" not found or is revoked.` }, { status: 404 });
@@ -31,11 +38,10 @@ export async function POST(request: NextRequest) {
       data.ansName,
       newAgentCertificatePem,
       data.protocolExtensions ? JSON.stringify(data.protocolExtensions) : undefined,
-      data.actualEndpoint
+      data.actualEndpoint // Pass through the optional actualEndpoint
     );
 
     if (!renewedAgent) {
-      // Should not happen if findAgentByAnsName succeeded, but as a safeguard
       return NextResponse.json({ error: `Failed to renew agent "${data.ansName}".` }, { status: 500 });
     }
 
