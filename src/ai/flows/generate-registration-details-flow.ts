@@ -1,22 +1,23 @@
-
 'use server';
 /**
  * @fileOverview A Genkit flow to assist in generating details for agent registration.
  *
  * - generateRegistrationDetails - A function that completes partial agent registration data.
- * - GenerateRegistrationDetailsInput - The input type (partial agent registration data).
- * - GenerateRegistrationDetailsOutput - The output type (completed agent registration data).
+ * - GenerateRegistrationDetailsInput - The input type (partial agent registration data). (Imported from lib/schemas)
+ * - GenerateRegistrationDetailsOutput - The output type (completed agent registration data). (Imported from lib/schemas)
  */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import { AgentRegistrationRequestSchema, type AgentRegistrationRequestPayload } from '@/lib/schemas';
+import { 
+  GenerateRegistrationDetailsInputSchema, 
+  type GenerateRegistrationDetailsInput,
+  GenerateRegistrationDetailsOutputSchema,
+  type GenerateRegistrationDetailsOutput,
+  AgentRegistrationRequestBaseSchema // Base schema for validation
+} from '@/lib/schemas';
 
-export const GenerateRegistrationDetailsInputSchema = AgentRegistrationRequestSchema.partial().describe("Partial agent registration details provided by the user. Empty fields should be filled by the AI.");
-export type GenerateRegistrationDetailsInput = z.infer<typeof GenerateRegistrationDetailsInputSchema>;
-
-export const GenerateRegistrationDetailsOutputSchema = AgentRegistrationRequestSchema.describe("Completed agent registration details, with AI-generated values for any missing fields.");
-export type GenerateRegistrationDetailsOutput = z.infer<typeof GenerateRegistrationDetailsOutputSchema>;
+export type { GenerateRegistrationDetailsInput, GenerateRegistrationDetailsOutput };
 
 export async function generateRegistrationDetails(input: GenerateRegistrationDetailsInput): Promise<GenerateRegistrationDetailsOutput> {
   return generateRegistrationDetailsFlow(input);
@@ -27,7 +28,7 @@ const prompt = ai.definePrompt({
   input: {schema: GenerateRegistrationDetailsInputSchema},
   output: {schema: GenerateRegistrationDetailsOutputSchema},
   prompt: `You are an expert assistant helping a user register an AI agent for the Agent Name Service (ANS).
-The user has provided some initial details for the agent. Your task is to complete any missing information to form a full registration request that conforms to the AgentRegistrationRequestSchema.
+The user has provided some initial details for the agent. Your task is to complete any missing information to form a full registration request that conforms to the GenerateRegistrationDetailsOutputSchema.
 
 Current Input:
 {{{json input}}}
@@ -50,7 +51,7 @@ Instructions for filling missing fields:
     MIIB[...]qGg==
     -----END CERTIFICATE REQUEST-----
     The content should appear valid for a CSR.
-9.  **certificate.issuer**: This field is usually for CA information. For a CSR, it's not strictly part of the request itself but context. If \\\`certificate.subject\\\` is generated, you can put a mock CA issuer like 'CN=Local Mock CA,O=Mock CA Org,C=US' or leave it empty if not specified.
+9.  **certificate.issuer**: This field is usually for CA information. For a CSR, it's not strictly part of the request itself but context. If \`certificate.subject\` is generated, you can put a mock CA issuer like 'CN=Local Mock CA,O=Mock CA Org,C=US' or leave it empty if not specified.
 10. **actualEndpoint**: If missing, generate a plausible HTTPS URL. Example: 'https://api.some-provider.com/agents/agent-id/v1'. Make it consistent with other generated fields.
 11. **protocolExtensions**:
     - If missing or null or an empty object, create a JSON object with at least a 'description' field.
@@ -58,9 +59,9 @@ Instructions for filling missing fields:
     - If other protocol-specific extensions make sense (e.g., for 'mcp', an 'mcpToolId'), you can add them.
     - Ensure the output for protocolExtensions is a valid JSON object.
 
-Adhere strictly to the output schema format. Ensure all generated string values are concise and use appropriate casing (camelCase/PascalCase) for identifiers as conventional.
+Adhere strictly to the output schema format (GenerateRegistrationDetailsOutputSchema). Ensure all generated string values are concise and use appropriate casing (camelCase/PascalCase) for identifiers as conventional.
 If a field is already provided by the user in the input, DO NOT overwrite it unless it's an empty string and the instructions suggest a default. Prefer user's input.
-The final output MUST be a complete JSON object matching AgentRegistrationRequestSchema.
+The final output MUST be a complete JSON object matching GenerateRegistrationDetailsOutputSchema.
 `,
 });
 
@@ -91,8 +92,8 @@ const generateRegistrationDetailsFlow = ai.defineFlow(
     }
 
 
-    // Validate against the schema before returning, helps catch AI mistakes
-    const validation = AgentRegistrationRequestSchema.safeParse(output);
+    // Validate against the GenerateRegistrationDetailsOutputSchema before returning
+    const validation = GenerateRegistrationDetailsOutputSchema.safeParse(output);
     if (!validation.success) {
         console.error("AI output failed Zod validation:", validation.error.format());
         // Attempt to return a partially valid object or throw a more specific error

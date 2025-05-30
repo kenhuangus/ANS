@@ -3,18 +3,18 @@
 
 import { 
   generateRegistrationDetails, 
-  type GenerateRegistrationDetailsInput,
-  type GenerateRegistrationDetailsOutput
+  type GenerateRegistrationDetailsInput, // Type import
+  type GenerateRegistrationDetailsOutput // Type import
 } from '@/ai/flows/generate-registration-details-flow';
 import { 
   generateRenewalDetails, 
-  type GenerateRenewalDetailsInput,
-  type GenerateRenewalDetailsOutput
+  type GenerateRenewalDetailsInput, // Type import
+  type GenerateRenewalDetailsOutput // Type import
 } from '@/ai/flows/generate-renewal-details-flow';
 import { 
   generateLookupDetails, 
-  type GenerateLookupDetailsInput,
-  type GenerateLookupDetailsOutput
+  type GenerateLookupDetailsInput, // Type import
+  type GenerateLookupDetailsOutput // Type import
 } from '@/ai/flows/generate-lookup-details-flow';
 
 export async function aiFillRegistrationDetailsAction(
@@ -34,28 +34,14 @@ export async function aiFillRenewalDetailsAction(
   input: GenerateRenewalDetailsInput
 ): Promise<GenerateRenewalDetailsOutput | { error: string }> {
   try {
-    // Ensure ansName is present before calling the flow, as the flow expects it.
-    if (!input.ansName || input.ansName.trim() === "") {
-        return { error: "ANSName is required to generate renewal details with AI." };
-    }
+    // The Genkit flow's prompt is designed to handle missing ansName by suggesting one.
+    // However, for a real renewal, ansName is critical.
+    // If AI consistently fails to produce a useful ansName when it's missing,
+    // we might re-add a client-side or action-level check.
+    // For now, let the flow attempt to fill it.
+    // if (!input.ansName || input.ansName.trim() === "") {
+    //     return { error: "ANSName is required to generate renewal details with AI. Please provide it or ensure other fields help AI guess it." };
+    // }
     const result = await generateRenewalDetails(input);
     return result;
-  } catch (error) {
-    console.error("AI Fill Renewal Error:", error);
-    const errorMessage = error instanceof Error ? error.message : "An unknown AI error occurred during renewal detail generation.";
-    return { error: errorMessage };
-  }
-}
-
-export async function aiFillLookupDetailsAction(
-  input: GenerateLookupDetailsInput
-): Promise<GenerateLookupDetailsOutput | { error: string }> {
-  try {
-    const result = await generateLookupDetails(input);
-    return result;
-  } catch (error) {
-    console.error("AI Fill Lookup Error:", error);
-    const errorMessage = error instanceof Error ? error.message : "An unknown AI error occurred during lookup detail generation.";
-    return { error: errorMessage };
-  }
-}
+  } catch (error)
