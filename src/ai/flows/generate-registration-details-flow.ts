@@ -50,7 +50,7 @@ Instructions for filling missing fields:
     MIIB[...]qGg==
     -----END CERTIFICATE REQUEST-----
     The content should appear valid for a CSR.
-9.  **certificate.issuer**: This field is usually for CA information. For a CSR, it's not strictly part of the request itself but context. If `certificate.subject` is generated, you can put a mock CA issuer like 'CN=Local Mock CA,O=Mock CA Org,C=US' or leave it empty if not specified.
+9.  **certificate.issuer**: This field is usually for CA information. For a CSR, it's not strictly part of the request itself but context. If \\\`certificate.subject\\\` is generated, you can put a mock CA issuer like 'CN=Local Mock CA,O=Mock CA Org,C=US' or leave it empty if not specified.
 10. **actualEndpoint**: If missing, generate a plausible HTTPS URL. Example: 'https://api.some-provider.com/agents/agent-id/v1'. Make it consistent with other generated fields.
 11. **protocolExtensions**:
     - If missing or null or an empty object, create a JSON object with at least a 'description' field.
