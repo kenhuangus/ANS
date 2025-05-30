@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -106,7 +107,7 @@ FormLabel.displayName = "FormLabel"
 const FormControl = React.forwardRef<
   React.ElementRef<typeof Slot>,
   React.ComponentPropsWithoutRef<typeof Slot>
->(({ ...props }, ref) => {
+>(({ children, ...rest }, ref) => { // Explicitly destructure children
   const { error, formItemId, formDescriptionId, formMessageId } = useFormField()
 
   return (
@@ -119,8 +120,10 @@ const FormControl = React.forwardRef<
           : `${formDescriptionId} ${formMessageId}`
       }
       aria-invalid={!!error}
-      {...props}
-    />
+      {...rest} // Spread the remaining props
+    >
+      {children} 
+    </Slot>
   )
 })
 FormControl.displayName = "FormControl"
