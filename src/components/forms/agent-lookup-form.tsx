@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,7 +21,8 @@ import { AgentCapabilityRequestSchema, type AgentCapabilityRequestPayload } from
 import type { AgentCapabilityResponse, Protocol } from "@/types";
 import { useState } from "react";
 import { AgentCard } from "@/components/agent-card";
-import { Loader2 } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
+import { aiFillLookupDetailsAction } from "@/app/actions/ai/ans-details-actions";
 
 const protocolOptions: { value: Protocol; label: string }[] = [
   { value: "a2a", label: "A2A (Agent2Agent)" },
@@ -31,32 +33,64 @@ const protocolOptions: { value: Protocol; label: string }[] = [
 export function AgentLookupForm() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [isAiLoading, setIsAiLoading] = useState(false);
   const [lookupResults, setLookupResults] = useState<AgentCapabilityResponse[]>([]);
 
   const form = useForm<AgentCapabilityRequestPayload>({
     resolver: zodResolver(AgentCapabilityRequestSchema),
     defaultValues: {
       requestType: "resolve",
-      ansName: "", // e.g., "a2a://translator.text.AcmeCorp.v1.0"
-      protocol: undefined, // User can select or AI can suggest
-      agentID: "", // e.g., "translator"
-      agentCapability: "", // e.g., "text"
-      provider: "", // e.g., "AcmeCorp"
-      version: "", // e.g., "1.0" or "1.x" or "*"
-      extension: "", // e.g., "hipaa"
+      ansName: "", 
+      protocol: undefined, 
+      agentID: "", 
+      agentCapability: "", 
+      provider: "", 
+      version: "", 
+      extension: "", 
     },
   });
+
+  async function handleAiFill() {
+    setIsAiLoading(true);
+    const currentValues = form.getValues();
+    const result = await aiFillLookupDetailsAction(currentValues);
+    
+    if ('error' in result) {
+      toast({
+        title: "AI Fill Error",
+        description: result.error,
+        variant: "destructive",
+      });
+    } else {
+      form.reset(result);
+      toast({
+        title: "AI Assistance",
+        description: "Lookup fields populated by AI. Please review and submit.",
+      });
+    }
+    setIsAiLoading(false);
+  }
 
   async function onSubmit(data: AgentCapabilityRequestPayload) {
     setIsLoading(true);
     setLookupResults([]);
 
-    // TODO: In a future step, if fields are empty, call a Genkit flow to populate them
-    // or to decide if enough information is present for a meaningful lookup.
+    // Check if any lookup parameter is provided.
+    const hasAnsName = data.ansName && data.ansName.trim() !== "";
+    const hasAnyAttribute = data.protocol || data.agentID || data.agentCapability || data.provider || data.version || (data.extension && data.extension.trim() !== "");
+
+    if (!hasAnsName && !hasAnyAttribute) {
+      toast({
+        title: "Missing Lookup Parameters",
+        description: "Please provide an ANSName or at least one attribute for lookup. You can also use 'AI Fill' for assistance.",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+      return;
+    }
 
     try {
       const queryParams = new URLSearchParams();
-      // Ensure requestType is always sent if not explicitly set (though schema now makes it optional)
       queryParams.append('requestType', data.requestType || 'resolve');
 
       Object.entries(data).forEach(([key, value]) => {
@@ -72,17 +106,18 @@ export function AgentLookupForm() {
         throw new Error(result.error || "Lookup failed");
       }
       
-      setLookupResults(Array.isArray(result) ? result : (result ? [result] : [])); 
-      if (Array.isArray(result) ? result.length === 0 : !result) {
+      const resultsArray = Array.isArray(result) ? result : (result ? [result] : []);
+      setLookupResults(resultsArray); 
+
+      if (resultsArray.length === 0) {
          toast({
           title: "Lookup Complete",
           description: "No agents found matching your criteria.",
-          variant: "default",
         });
       } else {
         toast({
           title: "Lookup Successful",
-          description: `${Array.isArray(result) ? result.length : 1} agent(s) found.`,
+          description: `${resultsArray.length} agent(s) found.`,
         });
       }
     } catch (error) {
@@ -103,61 +138,34 @@ export function AgentLookupForm() {
         <CardHeader>
           <CardTitle className="text-3xl text-primary">Lookup Agent</CardTitle>
           <CardDescription>
-            Search for agents by full ANSName or attributes. Fields are optional.
+            Search by ANSName or attributes. Use &quot;AI Fill Details&quot; for help.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="ansName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Full ANSName (Primary Search)</FormLabel>
-                    <FormControl><Input placeholder="e.g., a2a://translator.text.AcmeCorp.v1.0" {...field} value={field.value || ""} /></FormControl>
-                    <FormDescription>If provided, other attribute fields may be less critical.</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="flex justify-end">
+                <Button type="button" variant="outline" onClick={handleAiFill} disabled={isAiLoading} className="mb-4">
+                  {isAiLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                  AI Fill Details
+                </Button>
+              </div>
 
-              <p className="text-sm text-muted-foreground pt-2">Or search by attributes (all optional):</p>
+              <FormField control={form.control} name="ansName" render={({ field }) => ( <FormItem> <FormLabel>Full ANSName (Primary Search)</FormLabel> <FormControl><Input placeholder="e.g., a2a://translator.text.AcmeCorp.v1.0" {...field} value={field.value || ""} disabled={isAiLoading} /></FormControl> <FormDescription>If provided, other fields may be less critical. AI can construct this.</FormDescription> <FormMessage /> </FormItem> )}/>
+              <p className="text-sm text-muted-foreground pt-2">Or search by attributes (AI can also fill these):</p>
               
-              <FormField
-                control={form.control}
-                name="protocol"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Protocol</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ""}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a protocol (optional)" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="">Any Protocol</SelectItem>
-                        {protocolOptions.map(opt => (
-                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <FormField control={form.control} name="protocol" render={({ field }) => ( <FormItem> <FormLabel>Protocol</FormLabel> <Select onValueChange={field.onChange} value={field.value || ""} disabled={isAiLoading}> <FormControl> <SelectTrigger> <SelectValue placeholder="Select protocol (optional)" /> </SelectTrigger> </FormControl> <SelectContent> <SelectItem value="">Any Protocol</SelectItem> {protocolOptions.map(opt => ( <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem> ))} </SelectContent> </Select> <FormMessage /> </FormItem> )}/>
               <div className="grid md:grid-cols-2 gap-4">
-                <FormField control={form.control} name="agentID" render={({ field }) => ( <FormItem> <FormLabel>Agent ID</FormLabel> <FormControl><Input placeholder="e.g., translator" {...field} value={field.value || ""} /></FormControl> <FormMessage /> </FormItem> )} />
-                <FormField control={form.control} name="agentCapability" render={({ field }) => ( <FormItem> <FormLabel>Capability</FormLabel> <FormControl><Input placeholder="e.g., text" {...field} value={field.value || ""} /></FormControl> <FormMessage /> </FormItem> )} />
+                <FormField control={form.control} name="agentID" render={({ field }) => ( <FormItem> <FormLabel>Agent ID</FormLabel> <FormControl><Input placeholder="e.g., translator" {...field} value={field.value || ""} disabled={isAiLoading}/></FormControl> <FormMessage /> </FormItem> )} />
+                <FormField control={form.control} name="agentCapability" render={({ field }) => ( <FormItem> <FormLabel>Capability</FormLabel> <FormControl><Input placeholder="e.g., text" {...field} value={field.value || ""} disabled={isAiLoading}/></FormControl> <FormMessage /> </FormItem> )} />
               </div>
               <div className="grid md:grid-cols-2 gap-4">
-                <FormField control={form.control} name="provider" render={({ field }) => ( <FormItem> <FormLabel>Provider</FormLabel> <FormControl><Input placeholder="e.g., AcmeCorp" {...field} value={field.value || ""} /></FormControl> <FormMessage /> </FormItem> )} />
-                <FormField control={form.control} name="version" render={({ field }) => ( <FormItem> <FormLabel>Version</FormLabel> <FormControl><Input placeholder="e.g., 1.0 or 1.x or *" {...field} value={field.value || ""} /></FormControl> <FormMessage /> </FormItem> )} />
+                <FormField control={form.control} name="provider" render={({ field }) => ( <FormItem> <FormLabel>Provider</FormLabel> <FormControl><Input placeholder="e.g., AcmeCorp" {...field} value={field.value || ""} disabled={isAiLoading}/></FormControl> <FormMessage /> </FormItem> )} />
+                <FormField control={form.control} name="version" render={({ field }) => ( <FormItem> <FormLabel>Version</FormLabel> <FormControl><Input placeholder="e.g., 1.0 or 1.x or *" {...field} value={field.value || ""} disabled={isAiLoading}/></FormControl> <FormMessage /> </FormItem> )} />
               </div>
-              <FormField control={form.control} name="extension" render={({ field }) => ( <FormItem> <FormLabel>Extension</FormLabel> <FormControl><Input placeholder="e.g., hipaa" {...field} value={field.value || ""} /></FormControl> <FormMessage /> </FormItem> )} />
+              <FormField control={form.control} name="extension" render={({ field }) => ( <FormItem> <FormLabel>Extension</FormLabel> <FormControl><Input placeholder="e.g., hipaa" {...field} value={field.value || ""} disabled={isAiLoading}/></FormControl> <FormMessage /> </FormItem> )} />
               
-              <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isLoading}>
+              <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isLoading || isAiLoading}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Lookup Agent
               </Button>
