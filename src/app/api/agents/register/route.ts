@@ -1,10 +1,10 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
-import { AgentRegistrationRequestBaseSchema } from '@/lib/schemas'; // Updated import
+import { AgentRegistrationRequestBaseSchema, type AgentRegistrationRequestPayload, semanticVersionPattern } from '@/lib/schemas';
 import { addAgent, findAgentByAnsName } from '@/lib/db';
 import { generateCertificate, LOCAL_CA_CERTIFICATE_PEM, LOCAL_CA_PRIVATE_KEY_PEM } from '@/lib/pki';
-import { constructANSName, semanticVersionPattern } from '@/lib/ans'; // Assuming semanticVersionPattern is exported if needed here
-import type { AgentRegistrationRequestPayload } from '@/lib/schemas';
+import { constructANSName } from '@/lib/ans';
+// AgentRegistrationRequestPayload type is already imported from schemas
 
 export async function POST(request: NextRequest) {
   try {

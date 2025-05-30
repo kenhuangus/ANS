@@ -50,8 +50,11 @@ const completeSampleValues: AgentRegistrationRequestPayload = {
         pem: `-----BEGIN CERTIFICATE REQUEST-----\nMIICWjCCAbsCAQAwWzELMAkGA1UEBhMCVVMxEDAOBgNVBAgMB0FyaXpvbmExDjAM\nBgNVBAcMBVRlbXBlMRQwEgYDVQQKDAtTYW1wbGUgQ29ycDEUMBIGA1UEAwwLZXhh\nbXBsZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC4pY7/9gH7\nZfV7p8z9X9hM3w/tF6Z+s5F2e3k4v0KM3vN7v9gB5sP/G3z8K5vP4g7j8N4c5v/s\n2v7X6xR8vN2d4K8P9o/A6k5O8fP8Y6q/C4n2k7U5e8V2A3w9mB6y9r/J5kP/t3n\n5Gq7z8V6l8r/O9X7s8P/w4U3K9N/o7R2m+E9v9Q7x/F3m+Y9vC8p7K/P7j6D+M8\nN/R9qAgMBAAGgADANBgkqhkiG9w0BAQsFAAOCAQEABV35L/2D/4t/qV7P+Z/0\nE/jM9v+P3H/0F9hO7n9tF6Z/s5F2e3k4v0KM3vN7v9gB5sP/G3z8K5vP4g7j8N\n4c5v/s2v7X6xR8vN2d4K8P9o/A6k5O8fP8Y6q/C4n2k7U5e8V2A3w9mB6y9r/J\n5kP/t3n5Gq7z8V6l8r/O9X7s8P/w4U3K9N/o7R2m+E9v9Q7x/F3m+Y9vC8p7K\n-----END CERTIFICATE REQUEST-----`,
     },
     protocolExtensions: {
-        description: "A sample agent submitted with form defaults.",
-        source: "form-default-sample"
+      description: "A sample A2A agent designed for direct inter-agent communication and task execution, pre-filled for demonstration.",
+      a2aVersion: "1.1",
+      supportedMessagePatterns: ["request-response", "publish-subscribe"],
+      securityPolicy: "TLS-mutual-auth",
+      dataFormats: ["application/json", "application/xml"]
     },
     actualEndpoint: "https://api.formdefaultprovider.com/agents/sampleFormAgent/v1",
 };
@@ -64,7 +67,7 @@ export function AgentRegistrationForm() {
 
   const form = useForm<AgentRegistrationRequestPayload>({
     resolver: zodResolver(AgentRegistrationRequestBaseSchema),
-    defaultValues: completeSampleValues, // Use complete sample values for initial form load
+    defaultValues: completeSampleValues, 
   });
 
   async function handleAiFill() {
@@ -98,9 +101,6 @@ export function AgentRegistrationForm() {
     setIsLoading(true);
     setRegistrationResult(null);
     
-    // Build the payload. Since defaultValues are now completeSampleValues,
-    // formDataFromHook will already have these defaults if user hasn't changed them.
-    // We still ensure type consistency and handle potentially empty strings if user cleared fields.
     const payload: AgentRegistrationRequestPayload = {
       protocol: formDataFromHook.protocol || completeSampleValues.protocol,
       agentID: formDataFromHook.agentID?.trim() || completeSampleValues.agentID,
@@ -137,7 +137,6 @@ export function AgentRegistrationForm() {
         title: "Registration Attempted",
         description: result.message || `Agent ${result.ansName} registration processed.`,
       });
-      // form.reset(completeSampleValues); // Optionally reset form to initial samples after successful submission
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
       toast({
@@ -219,7 +218,7 @@ export function AgentRegistrationForm() {
                       onChange={(e) => {
                         try {
                           const val = e.target.value;
-                          if (val.trim() === "" || val.trim() === "{}") { // allow empty object
+                          if (val.trim() === "" || val.trim() === "{}") { 
                             field.onChange({}); 
                           } else {
                             field.onChange(JSON.parse(val));
@@ -228,7 +227,7 @@ export function AgentRegistrationForm() {
                            field.onChange(e.target.value); 
                         }
                       }}
-                      rows={3}
+                      rows={5}
                       disabled={isAiLoading}
                     />
                   </FormControl>
