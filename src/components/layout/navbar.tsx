@@ -20,7 +20,7 @@ export function Navbar() {
         <div className="flex items-center justify-between h-16">
           <Link href="/" className="flex items-center space-x-2 text-primary hover:text-primary/80 transition-colors">
             <ShieldCheck className="h-8 w-8" />
-            <span className="text-xl font-bold">AgentVerse Directory</span>
+            <span className="text-xl font-bold">Agent Name Service</span>
           </Link>
           <div className="flex items-center space-x-1 sm:space-x-4">
             {navItems.map((item) => {

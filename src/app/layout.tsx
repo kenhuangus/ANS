@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: 'AgentVerse Directory',
+  title: 'Agent Name Service',
   description: 'Agent Name Service (ANS) for Secure AI Agent Discovery and Interoperability',
 };
 

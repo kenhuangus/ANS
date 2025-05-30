@@ -30,7 +30,7 @@ export function AgentCard({ agent }: AgentCardProps) {
           </CardTitle>
           <Badge variant="outline" className="text-sm">{/* Protocol could be extracted from ANSName if needed */}</Badge>
         </div>
-        <CardDescription>Agent discovered in the AgentVerse Directory.</CardDescription>
+        <CardDescription>Agent discovered via the Agent Name Service.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         <div>

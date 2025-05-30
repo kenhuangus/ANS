@@ -1,8 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { AgentRegistrationRequestSchema } from '@/lib/schemas';
-import { addAgent } from '@/lib/db';
+import { addAgent, findAgentByAnsName } from '@/lib/db'; // Added findAgentByAnsName
 import { generateCertificate, LOCAL_CA_CERTIFICATE_PEM, LOCAL_CA_PRIVATE_KEY_PEM } from '@/lib/pki';
-import { constructANSName, parseANSName } from '@/lib/ans';
+import { constructANSName } from '@/lib/ans';
 import type { AgentRegistrationRequestPayload } from '@/lib/schemas';
 
 export async function POST(request: NextRequest) {
@@ -21,16 +21,16 @@ export async function POST(request: NextRequest) {
       agentID: data.agentID,
       agentCapability: data.agentCapability,
       provider: data.provider,
-      version: data.version, // This should be the base version string like "1.0.0"
+      version: data.version,
       extension: data.extension,
     });
     
-    // Check if agent already exists (using the constructed ANSName)
-    // const existingAgent = await findAgentByAnsName(ansName); // findAgentByAnsName is not exported from db.ts in this simple mock
-    // if (existingAgent) {
-    //   return NextResponse.json({ error: `Agent with ANSName "${ansName}" already exists.` }, { status: 409 });
-    // }
-
+    // Check if an active agent with this ANSName already exists.
+    // The addAgent function in db.ts will also perform a check, but this provides a cleaner 409 response.
+    const existingAgent = await findAgentByAnsName(ansName);
+    if (existingAgent) {
+      return NextResponse.json({ error: `Agent with ANSName "${ansName}" already actively registered.` }, { status: 409 });
+    }
 
     // Mock CA signing the CSR
     const agentCertificatePem = await generateCertificate(
@@ -60,6 +60,10 @@ export async function POST(request: NextRequest) {
     }, { status: 201 });
 
   } catch (error) {
+    // Catch specific error from addAgent if it's about duplication
+    if (error instanceof Error && error.message.includes("already exists")) {
+        return NextResponse.json({ error: error.message }, { status: 409 }); // Conflict
+    }
     console.error("Registration Error:", error);
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred during registration.";
     return NextResponse.json({ error: errorMessage }, { status: 500 });

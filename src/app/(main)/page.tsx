@@ -9,7 +9,7 @@ export default function HomePage() {
       <section className="text-center py-12 bg-card rounded-lg shadow-lg">
         <ShieldCheck className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-5xl font-extrabold tracking-tight text-primary">
-          Welcome to AgentVerse Directory
+          Welcome to the Agent Name Service
         </h1>
         <p className="mt-4 text-xl text-muted-foreground max-w-2xl mx-auto">
           A universal directory for secure AI agent discovery and interoperability,
