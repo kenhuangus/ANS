@@ -44,4 +44,22 @@ export async function aiFillRenewalDetailsAction(
     // }
     const result = await generateRenewalDetails(input);
     return result;
-  } catch (error)
+  } catch (error) {
+    console.error("AI Fill Renewal Error:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unknown AI error occurred during renewal detail generation.";
+    return { error: errorMessage };
+  }
+}
+
+export async function aiFillLookupDetailsAction(
+  input: GenerateLookupDetailsInput
+): Promise<GenerateLookupDetailsOutput | { error: string }> {
+  try {
+    const result = await generateLookupDetails(input);
+    return result;
+  } catch (error) {
+    console.error("AI Fill Lookup Error:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unknown AI error occurred during lookup detail generation.";
+    return { error: errorMessage };
+  }
+}

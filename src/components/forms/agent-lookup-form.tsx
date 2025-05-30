@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { AgentCapabilityRequestSchema, type AgentCapabilityRequestPayload } from "@/lib/schemas";
+import { AgentCapabilityRequestBaseSchema, type AgentCapabilityRequestPayload } from "@/lib/schemas"; // Changed import
 import type { AgentCapabilityResponse, Protocol } from "@/types";
 import { useState } from "react";
 import { AgentCard } from "@/components/agent-card";
@@ -37,7 +37,7 @@ export function AgentLookupForm() {
   const [lookupResults, setLookupResults] = useState<AgentCapabilityResponse[]>([]);
 
   const form = useForm<AgentCapabilityRequestPayload>({
-    resolver: zodResolver(AgentCapabilityRequestSchema),
+    resolver: zodResolver(AgentCapabilityRequestBaseSchema), // Ensured correct schema is used
     defaultValues: {
       requestType: "resolve",
       ansName: "", 

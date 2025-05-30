@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { AgentRegistrationRequestSchema, type AgentRegistrationRequestPayload } from "@/lib/schemas";
+import { AgentRegistrationRequestBaseSchema, type AgentRegistrationRequestPayload } from "@/lib/schemas"; // Changed import
 import type { AgentRegistrationResponse, Protocol } from "@/types";
 import { useState } from "react";
 import { Loader2, Sparkles } from "lucide-react";
@@ -43,9 +43,9 @@ export function AgentRegistrationForm() {
   const [registrationResult, setRegistrationResult] = useState<AgentRegistrationResponse | null>(null);
 
   const form = useForm<AgentRegistrationRequestPayload>({
-    resolver: zodResolver(AgentRegistrationRequestSchema),
-    defaultValues: { // These are initial placeholders, AI will fill them if requested
-      protocol: undefined, // Let AI pick or user select
+    resolver: zodResolver(AgentRegistrationRequestBaseSchema), // Ensured correct schema is used here
+    defaultValues: { 
+      protocol: undefined, 
       agentID: "",
       agentCapability: "",
       provider: "",
@@ -64,7 +64,8 @@ export function AgentRegistrationForm() {
   async function handleAiFill() {
     setIsAiLoading(true);
     const currentValues = form.getValues();
-    const result = await aiFillRegistrationDetailsAction(currentValues);
+    // For the AI fill action, we use the GenerateRegistrationDetailsInput which is a partial of AgentRegistrationRequestBaseSchema
+    const result = await aiFillRegistrationDetailsAction(currentValues); 
     
     if ('error' in result) {
       toast({
@@ -73,14 +74,13 @@ export function AgentRegistrationForm() {
         variant: "destructive",
       });
     } else {
-      // Ensure protocolExtensions is an object for the form
       const processedResult = {
         ...result,
         protocolExtensions: result.protocolExtensions && typeof result.protocolExtensions === 'object' 
           ? result.protocolExtensions 
-          : {}, // Default to empty object if not an object
+          : (typeof result.protocolExtensions === 'string' ? JSON.parse(result.protocolExtensions) : {}),
       };
-      form.reset(processedResult); // reset populates all fields
+      form.reset(processedResult);
       toast({
         title: "AI Assistance",
         description: "Form details have been populated by AI. Please review and submit.",
@@ -93,8 +93,6 @@ export function AgentRegistrationForm() {
     setIsLoading(true);
     setRegistrationResult(null);
 
-    // The backend will validate if essential fields are present for actual registration.
-    // The schema on the client is fully optional to allow AI to fill.
     if (!data.protocol || !data.agentID || !data.agentCapability || !data.provider || !data.version || !data.actualEndpoint || !data.certificate?.pem || !data.certificate?.subject) {
       toast({
         title: "Missing Information",
@@ -210,7 +208,7 @@ export function AgentRegistrationForm() {
                             field.onChange(JSON.parse(val));
                           }
                         } catch (error) {
-                           field.onChange(e.target.value); // Keep as string if invalid, let Zod handle
+                           field.onChange(e.target.value); 
                         }
                       }}
                       rows={3}
@@ -244,3 +242,5 @@ export function AgentRegistrationForm() {
     </Card>
   );
 }
+
+    
