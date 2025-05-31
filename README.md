@@ -62,9 +62,10 @@ Follow these steps to set up and run the project locally:
 
 1.  **Clone the repository (if you haven't already):**
     ```bash
-    git clone <repository-url>
-    cd <repository-directory>
+    git clone https://github.com/kenhuangus/agentverse-directory 
+    cd agentverse-directory
     ```
+    (Assuming `agentverse-directory` is the repository name. Please update if it's different.)
 
 2.  **Install dependencies:**
     Make sure you have Node.js and npm (or yarn/pnpm) installed.
@@ -155,7 +156,7 @@ This project is licensed under the MIT License.
 
 MIT License
 
-Copyright (c) 2024 [Your Name or Organization Name - Please Update]
+Copyright (c) 2024 Ken Huang
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
