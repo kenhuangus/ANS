@@ -32,10 +32,13 @@ import {
 } from "@/components/ui/alert-dialog";
 
 interface AgentRevocationFormProps {
+  // This component is no longer used in the main management flow, 
+  // but keeping its structure for potential future re-use or direct access.
+  // selectedAnsName prop is effectively deprecated by the table-based action.
   selectedAnsName?: string | null;
 }
 
-const REVOCATION_FORM_DEFAULT_ANSNAME = "mcp://sentimentAnalyzer.text.ExampleCorp.v1.2.0"; // Default if nothing selected
+const REVOCATION_FORM_DEFAULT_ANSNAME = "mcp://sentimentAnalyzer.text.ExampleCorp.v1.2.0"; 
 
 export function AgentRevocationForm({ selectedAnsName }: AgentRevocationFormProps) {
   const { toast } = useToast();
@@ -51,11 +54,10 @@ export function AgentRevocationForm({ selectedAnsName }: AgentRevocationFormProp
   });
 
   useEffect(() => {
-    form.setValue('ansName', selectedAnsName || REVOCATION_FORM_DEFAULT_ANSNAME, { shouldValidate: true, shouldDirty: true });
-    if(selectedAnsName) {
-        setRevocationResult(null); // Clear previous results when selection changes
-    } else {
-        form.reset({ ansName: REVOCATION_FORM_DEFAULT_ANSNAME }); // Reset to default if selection cleared
+    const newAnsName = selectedAnsName || REVOCATION_FORM_DEFAULT_ANSNAME;
+    form.setValue('ansName', newAnsName, { shouldValidate: true, shouldDirty: true });
+    if (form.getValues().ansName !== newAnsName || selectedAnsName) {
+        setRevocationResult(null); 
     }
   }, [selectedAnsName, form]);
 
@@ -91,7 +93,6 @@ export function AgentRevocationForm({ selectedAnsName }: AgentRevocationFormProp
         title: "Revocation Attempted",
         description: result.message || `Agent ${result.ansName} revocation processed.`,
       });
-      // Parent component should ideally handle updating the agent list and potentially clearing selection.
     } catch (error) {
        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
       toast({
@@ -109,7 +110,7 @@ export function AgentRevocationForm({ selectedAnsName }: AgentRevocationFormProp
     if (!currentAnsName || currentAnsName.trim() === "") {
       toast({
         title: "ANSName Required",
-        description: "Please select an agent from the table or ensure the ANSName is filled.",
+        description: "Please ensure the ANSName is filled to revoke an agent.",
         variant: "destructive",
       });
       return;
@@ -123,10 +124,10 @@ export function AgentRevocationForm({ selectedAnsName }: AgentRevocationFormProp
       <CardHeader>
         <CardTitle className="text-2xl text-destructive flex items-center">
           <AlertTriangle className="h-6 w-6 mr-2" />
-          Revoke Agent Registration
+          Revoke Agent (Legacy Form)
         </CardTitle>
         <CardDescription>
-          Agent&apos;s ANSName will be auto-filled if selected from the table. This action is irreversible.
+          This form is for direct revocation. Simpler revocation is available in the table. This action is irreversible.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -140,12 +141,10 @@ export function AgentRevocationForm({ selectedAnsName }: AgentRevocationFormProp
                   <FormLabel>ANSName of Agent to Revoke</FormLabel>
                   <FormControl>
                     <Input 
-                      placeholder="Select an agent from the table" 
+                      placeholder="Enter ANSName manually" 
                       {...field} 
                       value={field.value || ""} 
-                      readOnly={!!selectedAnsName} 
-                      className={!!selectedAnsName ? "border-destructive bg-input cursor-default" : "border-destructive focus:ring-destructive"}
-                      disabled={!!selectedAnsName} // Disable if selected from table
+                      className={"border-destructive focus:ring-destructive"}
                     />
                   </FormControl>
                   <FormMessage />
@@ -166,8 +165,6 @@ export function AgentRevocationForm({ selectedAnsName }: AgentRevocationFormProp
                     This action cannot be undone. This will permanently revoke the agent registration for:
                     <br />
                     <span className="font-semibold break-all"> {form.getValues().ansName || "this agent"}</span>.
-                    <br />
-                    The agent will no longer be discoverable or resolvable.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

@@ -24,10 +24,13 @@ import { Loader2, Sparkles } from "lucide-react";
 import { aiFillRenewalDetailsAction } from "@/app/actions/ai/ans-details-actions";
 
 interface AgentRenewalFormProps {
-  selectedAnsName?: string | null;
+  // This component is no longer used in the main management flow, 
+  // but keeping its structure for potential future re-use or direct access.
+  // selectedAnsName prop is effectively deprecated by the table-based action.
+  selectedAnsName?: string | null; 
 }
 
-const RENEWAL_FORM_DEFAULT_ANSNAME = "a2a://translator.text.ExampleOrg.v1.0.0.general"; // Default if nothing selected
+const RENEWAL_FORM_DEFAULT_ANSNAME = "a2a://translator.text.ExampleOrg.v1.0.0.general"; 
 
 export function AgentRenewalForm({ selectedAnsName }: AgentRenewalFormProps) {
   const { toast } = useToast();
@@ -49,31 +52,26 @@ export function AgentRenewalForm({ selectedAnsName }: AgentRenewalFormProps) {
     },
   });
 
+  // Effect to update form if selectedAnsName prop changes (e.g. if used outside table context)
   useEffect(() => {
-    form.setValue('ansName', selectedAnsName || RENEWAL_FORM_DEFAULT_ANSNAME, { shouldValidate: true, shouldDirty: true });
-    if (selectedAnsName) {
-        // Clear potentially irrelevant fields when a new agent is selected for renewal
+    const newAnsName = selectedAnsName || RENEWAL_FORM_DEFAULT_ANSNAME;
+    form.setValue('ansName', newAnsName, { shouldValidate: true, shouldDirty: true });
+    
+    // Reset other fields if the ANSName changes significantly from the default or a previous selection
+    if (form.getValues().ansName !== newAnsName || selectedAnsName) {
         form.setValue('certificate.subject', '');
         form.setValue('certificate.pem', '');
-        form.setValue('certificate.issuer', ''); // Issuer might be same, but good to clear for AI
-        form.setValue('actualEndpoint', ''); // Endpoint might change
-        form.setValue('protocolExtensions', {}); // Extensions might change
-        setRenewalResult(null); // Clear previous results
-    } else {
-        // If selection is cleared, reset other fields too
-        form.reset({
-            ansName: RENEWAL_FORM_DEFAULT_ANSNAME,
-            certificate: { subject: "", issuer: "", pem: "" },
-            protocolExtensions: {},
-            actualEndpoint: "",
-        });
+        form.setValue('certificate.issuer', ''); 
+        form.setValue('actualEndpoint', ''); 
+        form.setValue('protocolExtensions', {}); 
+        setRenewalResult(null); 
     }
   }, [selectedAnsName, form]);
 
   async function handleAiFill() {
     setIsAiLoading(true);
     const currentValues = form.getValues();
-    const ansNameToFill = currentValues.ansName; // AI will use this ansName as context
+    const ansNameToFill = currentValues.ansName;
 
     if (!ansNameToFill) {
          toast({
@@ -85,12 +83,10 @@ export function AgentRenewalForm({ selectedAnsName }: AgentRenewalFormProps) {
         return;
     }
 
-    // Pass only relevant fields for AI to fill, preserving the ansName
     const aiInput: Partial<AgentRenewalRequestPayload> = {
-        ansName: ansNameToFill, // Critical context for AI
-        // Let AI fill these based on the ansName context
+        ansName: ansNameToFill, 
         certificate: { subject: "", pem: "", issuer: ""}, 
-        actualEndpoint: currentValues.actualEndpoint || "", // Pass current if user typed something
+        actualEndpoint: currentValues.actualEndpoint || "", 
         protocolExtensions: currentValues.protocolExtensions || {}
     };
 
@@ -104,11 +100,10 @@ export function AgentRenewalForm({ selectedAnsName }: AgentRenewalFormProps) {
         variant: "destructive",
       });
     } else {
-      // Merge AI results with the fixed ansName
       const updatedValues = {
-        ...form.getValues(), // Keep existing values not touched by AI
-        ...result, // AI suggestions
-        ansName: ansNameToFill, // Crucially, ensure selected/current ansName is not overwritten by AI
+        ...form.getValues(), 
+        ...result, 
+        ansName: ansNameToFill, 
         protocolExtensions: result.protocolExtensions && typeof result.protocolExtensions === 'object' 
           ? result.protocolExtensions 
           : (typeof result.protocolExtensions === 'string' ? JSON.parse(result.protocolExtensions) : {}),
@@ -126,7 +121,7 @@ export function AgentRenewalForm({ selectedAnsName }: AgentRenewalFormProps) {
     setIsLoading(true);
     setRenewalResult(null);
     
-    const finalAnsName = data.ansName; // Should be correctly set by useEffect or default
+    const finalAnsName = data.ansName; 
 
     if (!finalAnsName || !data.certificate?.pem || !data.certificate?.subject) {
        toast({
@@ -167,12 +162,13 @@ export function AgentRenewalForm({ selectedAnsName }: AgentRenewalFormProps) {
     }
   }
 
+  // This form might be conditionally rendered or not rendered at all if management page design changes
   return (
     <Card className="w-full max-w-xl shadow-xl">
       <CardHeader>
-        <CardTitle className="text-2xl text-primary">Renew Agent Registration</CardTitle>
+        <CardTitle className="text-2xl text-primary">Renew Agent Registration (Legacy Form)</CardTitle>
         <CardDescription>
-          Agent&apos;s ANSName will be auto-filled if selected from the table above. Provide a new CSR.
+          This form is for detailed renewal with a new CSR. Simpler renewal is available in the table.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -186,12 +182,10 @@ export function AgentRenewalForm({ selectedAnsName }: AgentRenewalFormProps) {
                   <FormLabel>ANSName of Agent to Renew</FormLabel>
                   <FormControl>
                     <Input 
-                      placeholder="Select an agent from the table" 
+                      placeholder="Enter ANSName manually" 
                       {...field} 
                       value={field.value || ""} 
-                      readOnly={!!selectedAnsName} 
-                      className={!!selectedAnsName ? "bg-input cursor-default" : ""}
-                      disabled={isAiLoading || !!selectedAnsName} 
+                      disabled={isAiLoading} 
                     />
                   </FormControl>
                   <FormMessage />
@@ -199,7 +193,7 @@ export function AgentRenewalForm({ selectedAnsName }: AgentRenewalFormProps) {
               )}
             />
             <div className="flex justify-end">
-              <Button type="button" variant="outline" onClick={handleAiFill} disabled={isAiLoading || !form.getValues().ansName || !selectedAnsName}>
+              <Button type="button" variant="outline" onClick={handleAiFill} disabled={isAiLoading || !form.getValues().ansName}>
                 {isAiLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
                 AI Fill CSR & Other Details
               </Button>
@@ -222,7 +216,7 @@ export function AgentRenewalForm({ selectedAnsName }: AgentRenewalFormProps) {
                       onChange={(e) => {
                         try {
                           const val = e.target.value;
-                          if (val.trim() === "" || val.trim() === "{}") { field.onChange({}); } // Allow empty object
+                          if (val.trim() === "" || val.trim() === "{}") { field.onChange({}); } 
                           else { field.onChange(JSON.parse(val)); }
                         } catch (error) { field.onChange(e.target.value); }
                       }}
@@ -237,7 +231,7 @@ export function AgentRenewalForm({ selectedAnsName }: AgentRenewalFormProps) {
             />
             <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isLoading || isAiLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Renew Registration
+              Renew Registration (with CSR)
             </Button>
           </form>
         </Form>
