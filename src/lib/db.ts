@@ -99,7 +99,7 @@ export async function initializeDb() {
         );
       }
     }
-    console.log(`Mock DB populated. Total active agents: ${agentsDB.filter(a => !a.isRevoked).length}.`);
+    console.log(`Mock DB populated. Total agents in DB: ${agentsDB.length}.`);
   }
 }
 
@@ -175,10 +175,10 @@ export async function findAgents(
 
 export async function renewAgent(
   ansName: string,
-  newCertificatePem?: string | null, // Made optional
+  newCertificatePem?: string | null, 
   newProtocolExtensionsJson?: string | null, 
   newActualEndpoint?: string,
-  newTtl?: number // Added newTtl
+  newTtl?: number 
 ): Promise<AgentRecord | null> {
   const agentIndex = agentsDB.findIndex(agent => agent.ansName === ansName && !agent.isRevoked);
   if (agentIndex === -1) {
@@ -199,6 +199,9 @@ export async function renewAgent(
   }
   if (newTtl !== undefined) {
     agentsDB[agentIndex].ttl = newTtl;
+  } else {
+    // Default renewal TTL if not specified, e.g., 30 days
+    agentsDB[agentIndex].ttl = 30 * 24 * 60 * 60;
   }
   
   console.log(`Renewed agent: ${ansName}. New TTL: ${agentsDB[agentIndex].ttl}s. Renewal Timestamp: ${agentsDB[agentIndex].renewalTimestamp}`);
@@ -217,9 +220,15 @@ export async function revokeAgent(ansName: string): Promise<boolean> {
 }
 
 export async function getDisplayableAgents(limit: number = 10): Promise<AgentRecord[]> {
-  const nonRevokedAgents = agentsDB.filter(agent => !agent.isRevoked);
-  nonRevokedAgents.sort((a, b) => new Date(b.registrationTimestamp).getTime() - new Date(a.registrationTimestamp).getTime());
-  return JSON.parse(JSON.stringify(nonRevokedAgents.slice(0, limit)));
+  // Now returns all agents (including revoked) up to the limit, sorted by registration timestamp.
+  // The client view will handle displaying revoked status.
+  const allAgents = [...agentsDB]; 
+  allAgents.sort((a, b) => {
+    const dateA = new Date(a.registrationTimestamp).getTime();
+    const dateB = new Date(b.registrationTimestamp).getTime();
+    return dateB - dateA; // Sort newest first
+  });
+  return JSON.parse(JSON.stringify(allAgents.slice(0, limit)));
 }
 
 initializeDb();
