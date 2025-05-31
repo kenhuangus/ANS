@@ -84,7 +84,9 @@ export async function initializeDb() {
     for (const agentData of agentsToCreate) {
       const existing = agentsDB.find(a => a.ansName === agentData.ansName && !a.isRevoked);
       if (!existing) {
-        await addAgent(
+        // Ensure addAgent is awaited if it becomes truly async in the future
+        // For now, it's synchronous due to in-memory array operations.
+        addAgent(
           agentData.ansName,
           agentData.protocol,
           agentData.agentIdPart,
@@ -103,18 +105,20 @@ export async function initializeDb() {
   }
 }
 
+// This function is synchronous as it operates on an in-memory array.
+// It's marked async to align with potential future DB implementations.
 export async function addAgent(
   ansName: string,
   protocol: Protocol,
   agentIdPart: string,
   capability: string,
   provider: string,
-  version: string, 
+  version: string,
   extensionPart: string | null,
   certificatePem: string,
   protocolExtensionsJson: string | null,
   actualEndpoint: string,
-  ttl: number = 300 
+  ttl: number = 300
 ): Promise<AgentRecord> {
   const existingActiveAgent = agentsDB.find(agent => agent.ansName === ansName && !agent.isRevoked);
   if (existingActiveAgent) {
@@ -123,7 +127,7 @@ export async function addAgent(
   }
 
   const newAgent: AgentRecord = {
-    id: nextId++,
+    id: nextId++, // Assign unique ID
     ansName,
     protocol,
     agentIdPart,
@@ -134,13 +138,13 @@ export async function addAgent(
     certificatePem,
     protocolExtensionsJson,
     actualEndpoint,
-    registrationTimestamp: new Date().toISOString(),
+    registrationTimestamp: new Date().toISOString(), // Set current timestamp
     renewalTimestamp: null,
     isRevoked: false,
     ttl,
   };
   agentsDB.push(newAgent);
-  console.log(`Added agent: ${ansName}, ID: ${newAgent.id}`);
+  console.log(`Added agent: ${ansName}, ID: ${newAgent.id}. Timestamp: ${newAgent.registrationTimestamp}`);
   return newAgent;
 }
 
@@ -153,32 +157,34 @@ export async function findAgents(
   agentIdPart?: string,
   capability?: string,
   provider?: string,
-  requestedVersion?: string, 
+  requestedVersion?: string,
   extensionPart?: string
 ): Promise<AgentRecord[]> {
-  // Implementation ommited for brevity, assume it's the same as provided previously
-  // This function is primarily used by the /api/agents/lookup route
   let results = agentsDB.filter(agent => !agent.isRevoked);
   if (protocol) results = results.filter(agent => agent.protocol === protocol);
   if (agentIdPart) results = results.filter(agent => agent.agentIdPart === agentIdPart);
   if (capability) results = results.filter(agent => agent.capability === capability);
   if (provider) results = results.filter(agent => agent.provider === provider);
-  if (extensionPart === null) {
+
+  if (extensionPart === null) { // Explicitly looking for agents with no extension
     results = results.filter(agent => agent.extensionPart === null);
-  } else if (typeof extensionPart === 'string') {
+  } else if (typeof extensionPart === 'string' && extensionPart.trim() !== "") { // Looking for a specific extension
     results = results.filter(agent => agent.extensionPart === extensionPart);
   }
-  // Version matching logic omitted for brevity if it's complex and unchanged.
+  // If extensionPart is undefined or an empty string, it's ignored (matches all extensions).
+
+  // Version matching logic would go here if needed for findAgents based on requestedVersion.
+  // For now, this function is mostly used for attribute-based search without complex version negotiation.
   return results;
 }
 
 
 export async function renewAgent(
   ansName: string,
-  newCertificatePem?: string | null, 
-  newProtocolExtensionsJson?: string | null, 
+  newCertificatePem?: string | null,
+  newProtocolExtensionsJson?: string | null,
   newActualEndpoint?: string,
-  newTtl?: number 
+  newTtl?: number
 ): Promise<AgentRecord | null> {
   const agentIndex = agentsDB.findIndex(agent => agent.ansName === ansName && !agent.isRevoked);
   if (agentIndex === -1) {
@@ -186,26 +192,24 @@ export async function renewAgent(
     return null;
   }
   
-  agentsDB[agentIndex].renewalTimestamp = new Date().toISOString();
+  const agentToUpdate = agentsDB[agentIndex];
+  agentToUpdate.renewalTimestamp = new Date().toISOString();
 
   if (newCertificatePem) {
-    agentsDB[agentIndex].certificatePem = newCertificatePem;
+    agentToUpdate.certificatePem = newCertificatePem;
   }
-  if (newProtocolExtensionsJson !== undefined) { 
-    agentsDB[agentIndex].protocolExtensionsJson = newProtocolExtensionsJson;
+  if (newProtocolExtensionsJson !== undefined) {
+    agentToUpdate.protocolExtensionsJson = newProtocolExtensionsJson;
   }
   if (newActualEndpoint !== undefined) {
-    agentsDB[agentIndex].actualEndpoint = newActualEndpoint;
-  }
-  if (newTtl !== undefined) {
-    agentsDB[agentIndex].ttl = newTtl;
-  } else {
-    // Default renewal TTL if not specified, e.g., 30 days
-    agentsDB[agentIndex].ttl = 30 * 24 * 60 * 60;
+    agentToUpdate.actualEndpoint = newActualEndpoint;
   }
   
-  console.log(`Renewed agent: ${ansName}. New TTL: ${agentsDB[agentIndex].ttl}s. Renewal Timestamp: ${agentsDB[agentIndex].renewalTimestamp}`);
-  return agentsDB[agentIndex];
+  // Default renewal TTL is 30 days if newTtl is not specified, otherwise use newTtl.
+  agentToUpdate.ttl = newTtl !== undefined ? newTtl : (30 * 24 * 60 * 60);
+  
+  console.log(`Renewed agent: ${ansName}. New TTL: ${agentToUpdate.ttl}s. Renewal Timestamp: ${agentToUpdate.renewalTimestamp}`);
+  return agentToUpdate;
 }
 
 export async function revokeAgent(ansName: string): Promise<boolean> {
@@ -215,24 +219,36 @@ export async function revokeAgent(ansName: string): Promise<boolean> {
     return false;
   }
   agentsDB[agentIndex].isRevoked = true;
+  // Optionally, clear renewalTimestamp or set a specific revokedTimestamp if needed for display
+  // agentsDB[agentIndex].renewalTimestamp = null; 
   console.log(`Revoked agent: ${ansName}`);
   return true;
 }
 
 export async function getDisplayableAgents(limit: number = 10): Promise<AgentRecord[]> {
-  // Now returns all agents (including revoked) up to the limit, sorted by registration timestamp.
-  // The client view will handle displaying revoked status.
-  const allAgents = [...agentsDB]; 
+  // Returns all agents (including revoked), sorted to show newest registrations first.
+  // The client view handles displaying revoked status.
+  const allAgents = [...agentsDB];
+  
+  // Sort by registrationTimestamp descending (newest first).
+  // If timestamps are identical, sort by ID descending (higher ID is newer).
   allAgents.sort((a, b) => {
     const dateA = new Date(a.registrationTimestamp).getTime();
     const dateB = new Date(b.registrationTimestamp).getTime();
-    return dateB - dateA; // Sort newest first
+    if (dateB !== dateA) {
+      return dateB - dateA;
+    }
+    return b.id - a.id; // Higher ID is newer if timestamps are the same
   });
+  
+  // Return a deep copy of the limited slice to prevent direct mutation of DB objects.
   return JSON.parse(JSON.stringify(allAgents.slice(0, limit)));
 }
 
+// Initialize DB with sample data on first load.
 initializeDb();
 
+// Helper function for debugging or testing to get a snapshot of the DB.
 export async function getDbSnapshot(): Promise<AgentRecord[]> {
-  return JSON.parse(JSON.stringify(agentsDB)); 
+  return JSON.parse(JSON.stringify(agentsDB));
 }
