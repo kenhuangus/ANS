@@ -15,7 +15,7 @@ export async function directRenewAgentAction(ansName: string): Promise<{ success
 
     const updatedAgent = await dbRenewAgent(
       ansName,
-      null, // No new certificate PEM for direct table renewal
+      undefined, // Pass undefined to indicate no change to certificate PEM
       undefined, // No change to protocol extensions
       undefined, // No change to actual endpoint
       THIRTY_DAYS_IN_SECONDS // New TTL for 30 days
@@ -63,3 +63,4 @@ export async function fetchDisplayableAgentsAction(): Promise<AgentRecord[]> {
         return []; // Return empty array on error
     }
 }
+
