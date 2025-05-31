@@ -17,67 +17,67 @@ export async function initializeDb() {
         ansName: "a2a://translator.text.ExampleOrg.v1.0.0.general",
         protocol: "a2a" as Protocol, agentIdPart: "translator", capability: "text", provider: "ExampleOrg", version: "1.0.0", extensionPart: "general",
         protocolExtensionsJson: JSON.stringify({ description: "A2A agent for text translation.", supportedLanguages: ["en", "es", "fr"], a2aVersion: "1.1" }),
-        actualEndpoint: "https://api.example.org/a2a/translator/v1", ttl: 3600, // 1 hour
+        actualEndpoint: "https://api.example.org/a2a/translator/v1", ttl: 3600, 
       },
       {
         ansName: "mcp://sentimentAnalyzer.text.ExampleCorp.v1.2.0",
         protocol: "mcp" as Protocol, agentIdPart: "sentimentAnalyzer", capability: "text", provider: "ExampleCorp", version: "1.2.0", extensionPart: null,
         protocolExtensionsJson: JSON.stringify({ description: "MCP agent for sentiment analysis.", mcpToolId: "sentiment-v1.2" }),
-        actualEndpoint: "https://api.example.corp/mcp/sentiment", ttl: 7200, // 2 hours
+        actualEndpoint: "https://api.example.corp/mcp/sentiment", ttl: 7200, 
       },
       {
         ansName: "acp://conciergeBot.interactive.AISolutionsLLC.v0.9.5-beta.hospitality",
         protocol: "acp" as Protocol, agentIdPart: "conciergeBot", capability: "interactive", provider: "AISolutionsLLC", version: "0.9.5-beta", extensionPart: "hospitality",
         protocolExtensionsJson: JSON.stringify({ description: "ACP agent for hospitality concierge services.", acpVersion: "1.3", supportedChannels: ["websocket", "grpc"] }),
-        actualEndpoint: "wss://concierge.aisolutions.llc/acp/v1", ttl: 1800, // 30 minutes
+        actualEndpoint: "wss://concierge.aisolutions.llc/acp/v1", ttl: 1800, 
       },
       {
         ansName: "a2a://imageProcessor.image.MediaServices.v2.1.0.filters",
         protocol: "a2a" as Protocol, agentIdPart: "imageProcessor", capability: "image", provider: "MediaServices", version: "2.1.0", extensionPart: "filters",
         protocolExtensionsJson: JSON.stringify({ description: "A2A agent for image processing with various filters.", supportedFormats: ["jpg", "png"], maxResolution: "4K" }),
-        actualEndpoint: "https://api.mediaservices.com/a2a/image/filters/v2.1", ttl: 3600 * 24 * 7, // 7 days
+        actualEndpoint: "https://api.mediaservices.com/a2a/image/filters/v2.1", ttl: 3600 * 24 * 7, 
       },
       {
         ansName: "mcp://weatherForecaster.data.OpenWeatherOrg.v3.0.1",
         protocol: "mcp" as Protocol, agentIdPart: "weatherForecaster", capability: "data", provider: "OpenWeatherOrg", version: "3.0.1", extensionPart: null,
         protocolExtensionsJson: JSON.stringify({ description: "MCP agent providing weather forecasts.", input_schema: {type: "object", properties: {location: {type: "string"}}}, output_schema: {type: "object", properties: {forecast: {type: "string"}}}}),
-        actualEndpoint: "https://api.openweather.org/mcp/forecast/v3", ttl: 300, // 5 minutes
+        actualEndpoint: "https://api.openweather.org/mcp/forecast/v3", ttl: 300, 
       },
       {
         ansName: "acp://supportAssistant.chat.HelpDeskInc.v1.5.0.enterprise",
         protocol: "acp" as Protocol, agentIdPart: "supportAssistant", capability: "chat", provider: "HelpDeskInc", version: "1.5.0", extensionPart: "enterprise",
         protocolExtensionsJson: JSON.stringify({ description: "ACP based enterprise support chat assistant.", supportedIntents: ["password_reset", "ticket_status"], escalationPath: "human_operator" }),
-        actualEndpoint: "https://support.helpdeskinc.com/acp/chat/v1.5", ttl: 1800 * 2, // 1 hour
+        actualEndpoint: "https://support.helpdeskinc.com/acp/chat/v1.5", ttl: 1800 * 2, 
       },
       {
         ansName: "a2a://documentSummarizer.nlp.ResearchAI.v0.8.0-alpha",
         protocol: "a2a" as Protocol, agentIdPart: "documentSummarizer", capability: "nlp", provider: "ResearchAI", version: "0.8.0-alpha", extensionPart: null,
         protocolExtensionsJson: JSON.stringify({ description: "A2A Alpha version for document summarization.", maxLength: "5000_words" }),
-        actualEndpoint: "https://dev.research.ai/a2a/summarize/v0.8", ttl: 3600 * 24, // 1 day
+        actualEndpoint: "https://dev.research.ai/a2a/summarize/v0.8", ttl: 3600 * 24, 
       },
       {
         ansName: "mcp://stockTicker.finance.MarketWatchLLC.v1.0.0.realtime",
         protocol: "mcp" as Protocol, agentIdPart: "stockTicker", capability: "finance", provider: "MarketWatchLLC", version: "1.0.0", extensionPart: "realtime",
         protocolExtensionsJson: JSON.stringify({ description: "MCP agent for real-time stock ticker data.", symbols: ["AAPL", "GOOGL", "MSFT"] }),
-        actualEndpoint: "https://data.marketwatch.llc/mcp/stock/realtime", ttl: 60, // 1 minute
+        actualEndpoint: "https://data.marketwatch.llc/mcp/stock/realtime", ttl: 60, 
       },
       {
         ansName: "acp://iotController.device.SmartHomeSystem.v2.2.1.lighting",
         protocol: "acp" as Protocol, agentIdPart: "iotController", capability: "device", provider: "SmartHomeSystem", version: "2.2.1", extensionPart: "lighting",
         protocolExtensionsJson: JSON.stringify({ description: "ACP agent to control smart lighting devices.", commands: ["on", "off", "brightness", "color"] }),
-        actualEndpoint: "mqtt://smarthome.system/acp/devices/lighting", ttl: 86400, // 1 day
+        actualEndpoint: "mqtt://smarthome.system/acp/devices/lighting", ttl: 86400, 
       },
       {
         ansName: "a2a://codeGenerator.devtool.CodeGenX.v1.1.0.python",
         protocol: "a2a" as Protocol, agentIdPart: "codeGenerator", capability: "devtool", provider: "CodeGenX", version: "1.1.0", extensionPart: "python",
         protocolExtensionsJson: JSON.stringify({ description: "A2A agent that generates Python code snippets.", templateLibrary: "standard" }),
-        actualEndpoint: "https://api.codegenx.com/a2a/generate/python/v1.1", ttl: 3600 * 3, // 3 hours
+        actualEndpoint: "https://api.codegenx.com/a2a/generate/python/v1.1", ttl: 3600 * 3, 
       },
        {
         ansName: "mcp://newsAggregator.content.NewsHub.v1.0.0.global",
         protocol: "mcp" as Protocol, agentIdPart: "newsAggregator", capability: "content", provider: "NewsHub", version: "1.0.0", extensionPart: "global",
         protocolExtensionsJson: JSON.stringify({ description: "MCP agent for aggregating global news.", categories: ["technology", "business", "world"] }),
-        actualEndpoint: "https://api.newshub.com/mcp/articles", ttl: 900, // 15 minutes
+        actualEndpoint: "https://api.newshub.com/mcp/articles", ttl: 900, 
       },
     ];
 
@@ -150,26 +150,20 @@ export async function findAgentByAnsName(ansName: string): Promise<AgentRecord |
   return agentsDB.find(agent => agent.ansName === ansName && !agent.isRevoked) || null;
 }
 
-export async function findAgents(
-  protocol?: Protocol,
-  agentIdPart?: string,
-  capability?: string,
-  provider?: string,
-  requestedVersion?: string,
-  extensionPart?: string
-): Promise<AgentRecord[]> {
+export async function findAgents(searchTerm?: string): Promise<AgentRecord[]> {
   let results = agentsDB.filter(agent => !agent.isRevoked);
-  if (protocol) results = results.filter(agent => agent.protocol === protocol);
-  if (agentIdPart) results = results.filter(agent => agent.agentIdPart === agentIdPart);
-  if (capability) results = results.filter(agent => agent.capability === capability);
-  if (provider) results = results.filter(agent => agent.provider === provider);
 
-  if (extensionPart === null) { 
-    results = results.filter(agent => agent.extensionPart === null);
-  } else if (typeof extensionPart === 'string' && extensionPart.trim() !== "") { 
-    results = results.filter(agent => agent.extensionPart === extensionPart);
+  if (searchTerm && searchTerm.trim() !== "") {
+    const lowerSearchTerm = searchTerm.toLowerCase();
+    results = results.filter(agent =>
+      agent.ansName.toLowerCase().includes(lowerSearchTerm) ||
+      agent.agentIdPart.toLowerCase().includes(lowerSearchTerm) ||
+      agent.capability.toLowerCase().includes(lowerSearchTerm) ||
+      agent.provider.toLowerCase().includes(lowerSearchTerm) ||
+      (agent.extensionPart && agent.extensionPart.toLowerCase().includes(lowerSearchTerm)) ||
+      agent.version.toLowerCase().includes(lowerSearchTerm) 
+    );
   }
-  
   return results;
 }
 
@@ -193,14 +187,14 @@ export async function renewAgent(
   if (newCertificatePem) {
     agentToUpdate.certificatePem = newCertificatePem;
   }
-  if (newProtocolExtensionsJson !== undefined) { // Allows setting to null
+  if (newProtocolExtensionsJson !== undefined) { 
     agentToUpdate.protocolExtensionsJson = newProtocolExtensionsJson;
   }
-  if (newActualEndpoint !== undefined) { // Allows setting to empty string if intended
+  if (newActualEndpoint !== undefined) { 
     agentToUpdate.actualEndpoint = newActualEndpoint;
   }
   
-  agentToUpdate.ttl = newTtl !== undefined ? newTtl : (30 * 24 * 60 * 60);
+  agentToUpdate.ttl = newTtl !== undefined ? newTtl : (30 * 24 * 60 * 60); // Default 30 days
   
   console.log(`[DB INFO] Renewed agent: ${ansName}. New TTL: ${agentToUpdate.ttl}s. Renewal Timestamp: ${agentToUpdate.renewalTimestamp}`);
   return agentToUpdate;
@@ -219,8 +213,7 @@ export async function revokeAgent(ansName: string): Promise<boolean> {
 
 export async function getDisplayableAgents(limit: number = 10): Promise<AgentRecord[]> {
   console.log(`[DB DEBUG] getDisplayableAgents called. Current agentsDB length: ${agentsDB.length}`);
-  // console.log("[DB DEBUG] Full agentsDB content BEFORE filtering/sorting:", JSON.stringify(agentsDB, null, 2));
-
+  
   const allAgents = [...agentsDB]; 
   
   allAgents.sort((a, b) => {
@@ -234,7 +227,6 @@ export async function getDisplayableAgents(limit: number = 10): Promise<AgentRec
   
   const displayable = JSON.parse(JSON.stringify(allAgents.slice(0, limit)));
   console.log(`[DB DEBUG] getDisplayableAgents: Returning ${displayable.length} agents for display AFTER sorting and limiting.`);
-  // console.log("[DB DEBUG] Displayable agents:", JSON.stringify(displayable, null, 2));
   return displayable;
 }
 
@@ -244,3 +236,5 @@ export async function getDbSnapshot(): Promise<AgentRecord[]> {
   console.log("[DB DEBUG] getDbSnapshot called. Returning current agentsDB content.");
   return JSON.parse(JSON.stringify(agentsDB));
 }
+
+    

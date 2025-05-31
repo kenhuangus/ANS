@@ -14,90 +14,37 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { AgentCapabilityRequestBaseSchema, type AgentCapabilityRequestPayload } from "@/lib/schemas";
-import type { AgentCapabilityResponse, Protocol } from "@/types";
+import type { AgentCapabilityResponse } from "@/types";
 import { useState } from "react";
 import { AgentCard } from "@/components/agent-card";
-import { Loader2, Sparkles } from "lucide-react";
-import { aiFillLookupDetailsAction } from "@/app/actions/ai/ans-details-actions";
-
-const protocolOptions: { value: Protocol; label: string }[] = [
-  { value: "a2a", label: "A2A (Agent2Agent)" },
-  { value: "mcp", label: "MCP (Model Context Protocol)" },
-  { value: "acp", label: "ACP (Agent Communication Protocol)" },
-];
+import { Loader2 } from "lucide-react";
+// AI Fill action and related imports are removed as the form is simplified.
 
 export function AgentLookupForm() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [isAiLoading, setIsAiLoading] = useState(false);
   const [lookupResults, setLookupResults] = useState<AgentCapabilityResponse[]>([]);
 
   const form = useForm<AgentCapabilityRequestPayload>({
     resolver: zodResolver(AgentCapabilityRequestBaseSchema),
     defaultValues: {
-      requestType: "resolve",
-      ansName: "", 
-      protocol: undefined, 
-      agentID: "", 
-      agentCapability: "", 
-      provider: "", 
-      version: "", 
-      extension: "", 
+      searchQuery: "", 
     },
   });
-
-  async function handleAiFill() {
-    setIsAiLoading(true);
-    const currentValues = form.getValues();
-    const result = await aiFillLookupDetailsAction(currentValues);
-    
-    if ('error' in result) {
-      toast({
-        title: "AI Fill Error",
-        description: result.error,
-        variant: "destructive",
-      });
-    } else {
-      form.reset(result);
-      toast({
-        title: "AI Assistance",
-        description: "Lookup fields populated by AI. Please review and submit.",
-      });
-    }
-    setIsAiLoading(false);
-  }
 
   async function onSubmit(data: AgentCapabilityRequestPayload) {
     setIsLoading(true);
     setLookupResults([]);
 
-    // Client-side check removed to allow empty searches for listing all agents.
-    // const hasAnsName = data.ansName && data.ansName.trim() !== "";
-    // const hasAnyAttribute = data.protocol || data.agentID || data.agentCapability || data.provider || data.version || (data.extension && data.extension.trim() !== "");
-
-    // if (!hasAnsName && !hasAnyAttribute) {
-    //   toast({
-    //     title: "Missing Lookup Parameters",
-    //     description: "Please provide an ANSName or at least one attribute for lookup. You can also use 'AI Fill' for assistance.",
-    //     variant: "destructive",
-    //   });
-    //   setIsLoading(false);
-    //   return;
-    // }
-
     try {
       const queryParams = new URLSearchParams();
-      queryParams.append('requestType', data.requestType || 'resolve');
-
-      Object.entries(data).forEach(([key, value]) => {
-        if (key !== 'requestType' && value !== undefined && value !== null && String(value).trim() !== "") {
-          queryParams.append(key, String(value));
-        }
-      });
+      if (data.searchQuery && data.searchQuery.trim() !== "") {
+        queryParams.append('q', data.searchQuery.trim());
+      }
+      // If searchQuery is empty, the API will list all agents by default based on backend logic.
       
       const response = await fetch(`/api/agents/lookup?${queryParams.toString()}`);
       const result = await response.json();
@@ -138,34 +85,31 @@ export function AgentLookupForm() {
         <CardHeader>
           <CardTitle className="text-3xl text-primary">Lookup Agent</CardTitle>
           <CardDescription>
-            Search by ANSName or attributes. Leave fields blank to list all agents. Use &quot;AI Fill Details&quot; for help.
+            Enter a name, ID, capability, or part of an ANSName to search.
+            Leave blank to list all registered agents.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <div className="flex justify-end">
-                <Button type="button" variant="outline" onClick={handleAiFill} disabled={isAiLoading} className="mb-4">
-                  {isAiLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                  AI Fill Details
-                </Button>
-              </div>
-
-              <FormField control={form.control} name="ansName" render={({ field }) => ( <FormItem> <FormLabel>Full ANSName (Primary Search)</FormLabel> <FormControl><Input placeholder="e.g., a2a://translator.text.AcmeCorp.v1.0" {...field} value={field.value || ""} disabled={isAiLoading} /></FormControl> <FormDescription>If provided, other fields may be less critical. AI can construct this.</FormDescription> <FormMessage /> </FormItem> )}/>
-              <p className="text-sm text-muted-foreground pt-2">Or search by attributes (AI can also fill these):</p>
+              <FormField
+                control={form.control}
+                name="searchQuery"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Search Term</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., translator, AcmeCorp, or a2a://..." {...field} value={field.value || ""} />
+                    </FormControl>
+                    <FormDescription>
+                      Performs a pattern match across agent details.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               
-              <FormField control={form.control} name="protocol" render={({ field }) => ( <FormItem> <FormLabel>Protocol</FormLabel> <Select onValueChange={field.onChange} value={field.value || ""} disabled={isAiLoading}> <FormControl> <SelectTrigger> <SelectValue placeholder="Select protocol (optional)" /> </SelectTrigger> </FormControl> <SelectContent> <SelectItem value="">Any Protocol</SelectItem> {protocolOptions.map(opt => ( <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem> ))} </SelectContent> </Select> <FormMessage /> </FormItem> )}/>
-              <div className="grid md:grid-cols-2 gap-4">
-                <FormField control={form.control} name="agentID" render={({ field }) => ( <FormItem> <FormLabel>Agent ID</FormLabel> <FormControl><Input placeholder="e.g., translator" {...field} value={field.value || ""} disabled={isAiLoading}/></FormControl> <FormMessage /> </FormItem> )} />
-                <FormField control={form.control} name="agentCapability" render={({ field }) => ( <FormItem> <FormLabel>Capability</FormLabel> <FormControl><Input placeholder="e.g., text" {...field} value={field.value || ""} disabled={isAiLoading}/></FormControl> <FormMessage /> </FormItem> )} />
-              </div>
-              <div className="grid md:grid-cols-2 gap-4">
-                <FormField control={form.control} name="provider" render={({ field }) => ( <FormItem> <FormLabel>Provider</FormLabel> <FormControl><Input placeholder="e.g., AcmeCorp" {...field} value={field.value || ""} disabled={isAiLoading}/></FormControl> <FormMessage /> </FormItem> )} />
-                <FormField control={form.control} name="version" render={({ field }) => ( <FormItem> <FormLabel>Version</FormLabel> <FormControl><Input placeholder="e.g., 1.0 or 1.x or *" {...field} value={field.value || ""} disabled={isAiLoading}/></FormControl> <FormMessage /> </FormItem> )} />
-              </div>
-              <FormField control={form.control} name="extension" render={({ field }) => ( <FormItem> <FormLabel>Extension</FormLabel> <FormControl><Input placeholder="e.g., hipaa" {...field} value={field.value || ""} disabled={isAiLoading}/></FormControl> <FormMessage /> </FormItem> )} />
-              
-              <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isLoading || isAiLoading}>
+              <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isLoading}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Lookup Agent
               </Button>
@@ -187,3 +131,5 @@ export function AgentLookupForm() {
     </div>
   );
 }
+
+    

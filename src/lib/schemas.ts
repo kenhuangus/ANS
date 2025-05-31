@@ -7,7 +7,7 @@ export const ansNamePattern = /^(a2a|mcp|acp):\/\/([^.]+)\.([^.]+)\.([^.]+)\.v([
 
 
 export const CertificateSchema = z.object({
-  subject: z.string().optional(), // Empty string is a string, so this is fine if AI returns ""
+  subject: z.string().optional(), 
   issuer: z.string().optional(),
   pem: z.string().optional(), 
 });
@@ -36,20 +36,14 @@ export const AgentRenewalRequestBaseSchema = z.object({
 export type AgentRenewalRequestPayload = z.infer<typeof AgentRenewalRequestBaseSchema>;
 
 export const AgentRevocationRequestSchema = z.object({
-  ansName: z.string().regex(ansNamePattern, "Invalid ANSName format.").optional(), // Made optional, AI or backend can handle
+  ansName: z.string().regex(ansNamePattern, "Invalid ANSName format.").optional(),
 });
 export type AgentRevocationRequestPayload = z.infer<typeof AgentRevocationRequestSchema>;
 
 
+// Simplified for single search query
 export const AgentCapabilityRequestBaseSchema = z.object({
-  requestType: z.literal("resolve").optional(), 
-  ansName: z.string().regex(ansNamePattern, "Invalid ANSName format if provided.").optional(),
-  protocol: z.enum(["a2a", "mcp", "acp"]).optional(),
-  agentID: z.string().optional(),
-  agentCapability: z.string().optional(),
-  provider: z.string().optional(),
-  version: z.string().optional(), // Allows semver ranges like "1.x" or "*"
-  extension: z.string().optional().nullable(),
+  searchQuery: z.string().optional().describe("A search term used for fuzzy matching against agent names, IDs, capabilities, etc."), 
 });
 export type AgentCapabilityRequestPayload = z.infer<typeof AgentCapabilityRequestBaseSchema>;
 
@@ -74,12 +68,13 @@ export type AgentCapabilityResponsePayload = z.infer<typeof AgentCapabilityRespo
 
 
 // AI Flow Specific Schemas
+// Note: GenerateLookupDetails flow might need revision if used with simplified single search input.
+// For now, the form will bypass this AI flow.
 
 // For GenerateRegistrationDetails Flow
 export const GenerateRegistrationDetailsInputSchema = AgentRegistrationRequestBaseSchema.partial().describe("Partial agent registration details provided by the user. Empty fields should be filled by the AI.");
 export type GenerateRegistrationDetailsInput = z.infer<typeof GenerateRegistrationDetailsInputSchema>;
 
-// The output schema for the AI flow. This ensures all fields AI is supposed to fill are present and valid.
 export const GenerateRegistrationDetailsOutputSchema = AgentRegistrationRequestBaseSchema.extend({
   protocol: z.enum(["a2a", "mcp", "acp"]),
   agentID: z.string().min(1, "Agent ID cannot be empty"),
@@ -111,13 +106,26 @@ export const GenerateRenewalDetailsOutputSchema = AgentRenewalRequestBaseSchema.
 export type GenerateRenewalDetailsOutput = z.infer<typeof GenerateRenewalDetailsOutputSchema>;
 
 
-// For GenerateLookupDetails Flow
-export const GenerateLookupDetailsInputSchema = AgentCapabilityRequestBaseSchema.partial().describe("Partial agent lookup details provided by the user.");
+// For GenerateLookupDetails Flow (Potentially needs update/deprecation for simple search)
+// This schema is based on the *original* multi-field AgentCapabilityRequestBaseSchema for the AI prompt context.
+// If AI is to assist with the new single searchQuery, this needs to be re-evaluated.
+const OriginalAgentCapabilityRequestSchemaForAI = z.object({
+  requestType: z.literal("resolve").optional(), 
+  ansName: z.string().regex(ansNamePattern, "Invalid ANSName format if provided.").optional(),
+  protocol: z.enum(["a2a", "mcp", "acp"]).optional(),
+  agentID: z.string().optional(),
+  agentCapability: z.string().optional(),
+  provider: z.string().optional(),
+  version: z.string().optional(), 
+  extension: z.string().optional().nullable(),
+});
+export const GenerateLookupDetailsInputSchema = OriginalAgentCapabilityRequestSchemaForAI.partial().describe("Partial agent lookup details provided by the user for AI structuring (based on old multi-field model).");
 export type GenerateLookupDetailsInput = z.infer<typeof GenerateLookupDetailsInputSchema>;
 
-export const GenerateLookupDetailsOutputSchema = AgentCapabilityRequestBaseSchema.extend({
+export const GenerateLookupDetailsOutputSchema = OriginalAgentCapabilityRequestSchemaForAI.extend({
   requestType: z.literal("resolve").default("resolve")
-}).describe("Completed agent lookup details, with AI-generated or structured values for missing/partial fields.");
+}).describe("Completed agent lookup details, with AI-generated or structured values (based on old multi-field model).");
 export type GenerateLookupDetailsOutput = z.infer<typeof GenerateLookupDetailsOutputSchema>;
+    
 
     
