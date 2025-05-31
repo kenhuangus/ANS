@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, RefreshCw, Trash2, ShieldAlert, Info } from 'lucide-react';
 import { directRenewAgentAction, directRevokeAgentAction, fetchDisplayableAgentsAction } from '@/app/actions/db/agent-actions';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { format, formatDistanceToNowStrict, addSeconds } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -102,7 +102,7 @@ export function AgentManagementClientView({ initialAgents }: AgentManagementClie
         </Button>
       </div>
       <p className="mb-6 text-muted-foreground">
-        A snapshot of recently registered or updated agent records. Renew or revoke them directly.
+        A snapshot of registered agent records. Renew or revoke them directly.
       </p>
       <Card className="shadow-md">
         <CardContent className="p-0">
