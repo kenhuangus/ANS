@@ -1,3 +1,4 @@
+
 import { NextResponse, type NextRequest } from 'next/server';
 import { AgentCapabilityRequestSchema } from '@/lib/schemas';
 import { findAgentByAnsName, findAgents } from '@/lib/db';
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
     if (searchParams.has('requestType')) queryData.requestType = "resolve"; // only "resolve" is supported
     if (searchParams.has('ansName')) queryData.ansName = searchParams.get('ansName')!;
     if (searchParams.has('protocol')) queryData.protocol = searchParams.get('protocol') as Protocol;
-    if (search_params.has('agentID')) queryData.agentID = search_params.get('agentID')!; // Fix: searchParams was search_params
+    if (searchParams.has('agentID')) queryData.agentID = searchParams.get('agentID')!;
     if (searchParams.has('agentCapability')) queryData.agentCapability = searchParams.get('agentCapability')!;
     if (searchParams.has('provider')) queryData.provider = searchParams.get('provider')!;
     if (searchParams.has('version')) queryData.version = searchParams.get('version')!;
@@ -31,20 +32,11 @@ export async function GET(request: NextRequest) {
     }
     const data = validation.data;
 
-    // If no meaningful parameters are provided for lookup, return an error.
     const hasAnsName = data.ansName && data.ansName.trim() !== "";
-    const hasSufficientAttributes = data.protocol && data.agentID && data.agentCapability && data.provider && data.version;
     const hasAnyAttribute = data.protocol || data.agentID || data.agentCapability || data.provider || data.version || data.extension;
 
-    if (!hasAnsName && !hasAnyAttribute) { // If no ANS name and no other attribute is specified at all.
-         return NextResponse.json({ error: "At least one lookup parameter (ansName or specific attributes) must be provided." }, { status: 400 });
-    }
-    if (!hasAnsName && !hasSufficientAttributes && hasAnyAttribute) { // If some attributes but not enough for a non-ANSName lookup
-        // This condition might be too strict if partial searches are desired.
-        // For now, we allow partial attribute search.
-        // The `findAgents` function will return matches based on what's provided.
-    }
-
+    // If no specific lookup parameters are provided (other than requestType), list all agents.
+    // Otherwise, proceed with specific lookup.
 
     let resolvedAgents: AgentRecord[] = [];
 
@@ -65,8 +57,7 @@ export async function GET(request: NextRequest) {
       const agent = versionNegotiation(agentsWithSameBase, parsed.version);
       if (agent) resolvedAgents.push(agent);
 
-    } else {
-      // Capability-based lookup
+    } else { // This includes the case where only requestType is present, or other attributes.
       const matchedAgents = await findAgents(
         data.protocol,
         data.agentID,
@@ -123,10 +114,9 @@ export async function GET(request: NextRequest) {
     }
     
     if (verifiedResponses.length === 0 && resolvedAgents.length > 0) {
-        // This means agents were found but none passed verification
-        return NextResponse.json({ error: "Agents found but failed verification (certificate invalid/revoked)." }, { status: 404 }); // Or 200 with empty array?
+        return NextResponse.json({ error: "Agents found but failed verification (certificate invalid/revoked)." }, { status: 404 });
     }
-     if (verifiedResponses.length === 0) { // No agents found or none verified
+     if (verifiedResponses.length === 0) { 
          return NextResponse.json([], { status: 200 });
     }
 

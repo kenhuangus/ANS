@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -39,7 +40,7 @@ export function AgentRevocationForm() {
   const form = useForm<AgentRevocationRequestPayload>({
     resolver: zodResolver(AgentRevocationRequestSchema),
     defaultValues: {
-      ansName: "a2a://agentToBeRevoked.service.MyOrg.v1.0",
+      ansName: "mcp://sentimentAnalyzer.text.ExampleCorp.v1.2.0", // Sample MCP agent
     },
   });
 
@@ -48,8 +49,6 @@ export function AgentRevocationForm() {
     const data = form.getValues(); 
     setIsLoading(true);
     setRevocationResult(null);
-    // TODO: In a future step, if ansName is empty, call a Genkit flow to suggest one or pick from a list.
-    // For now, the backend will validate if ansName is present.
     try {
       const response = await fetch('/api/agents/revoke', {
         method: 'POST',
@@ -67,7 +66,8 @@ export function AgentRevocationForm() {
         title: "Revocation Attempted",
         description: result.message || `Agent ${result.ansName} revocation processed.`,
       });
-      // form.reset();
+      // Optionally reset form or update default if this agent is now gone
+      // form.reset({ ansName: "anotherSampleAgent.ifAvailable.otherwise.empty" }); 
     } catch (error) {
        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
       toast({
@@ -81,7 +81,6 @@ export function AgentRevocationForm() {
   }
   
   function onSubmitWithConfirm(_data: AgentRevocationRequestPayload) {
-    // Client-side check before showing dialog
     const currentAnsName = form.getValues().ansName;
     if (!currentAnsName || currentAnsName.trim() === "") {
       toast({

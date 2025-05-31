@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { AgentCapabilityRequestBaseSchema, type AgentCapabilityRequestPayload } from "@/lib/schemas"; // Changed import
+import { AgentCapabilityRequestBaseSchema, type AgentCapabilityRequestPayload } from "@/lib/schemas";
 import type { AgentCapabilityResponse, Protocol } from "@/types";
 import { useState } from "react";
 import { AgentCard } from "@/components/agent-card";
@@ -37,7 +37,7 @@ export function AgentLookupForm() {
   const [lookupResults, setLookupResults] = useState<AgentCapabilityResponse[]>([]);
 
   const form = useForm<AgentCapabilityRequestPayload>({
-    resolver: zodResolver(AgentCapabilityRequestBaseSchema), // Ensured correct schema is used
+    resolver: zodResolver(AgentCapabilityRequestBaseSchema),
     defaultValues: {
       requestType: "resolve",
       ansName: "", 
@@ -75,19 +75,19 @@ export function AgentLookupForm() {
     setIsLoading(true);
     setLookupResults([]);
 
-    // Check if any lookup parameter is provided.
-    const hasAnsName = data.ansName && data.ansName.trim() !== "";
-    const hasAnyAttribute = data.protocol || data.agentID || data.agentCapability || data.provider || data.version || (data.extension && data.extension.trim() !== "");
+    // Client-side check removed to allow empty searches for listing all agents.
+    // const hasAnsName = data.ansName && data.ansName.trim() !== "";
+    // const hasAnyAttribute = data.protocol || data.agentID || data.agentCapability || data.provider || data.version || (data.extension && data.extension.trim() !== "");
 
-    if (!hasAnsName && !hasAnyAttribute) {
-      toast({
-        title: "Missing Lookup Parameters",
-        description: "Please provide an ANSName or at least one attribute for lookup. You can also use 'AI Fill' for assistance.",
-        variant: "destructive",
-      });
-      setIsLoading(false);
-      return;
-    }
+    // if (!hasAnsName && !hasAnyAttribute) {
+    //   toast({
+    //     title: "Missing Lookup Parameters",
+    //     description: "Please provide an ANSName or at least one attribute for lookup. You can also use 'AI Fill' for assistance.",
+    //     variant: "destructive",
+    //   });
+    //   setIsLoading(false);
+    //   return;
+    // }
 
     try {
       const queryParams = new URLSearchParams();
@@ -138,7 +138,7 @@ export function AgentLookupForm() {
         <CardHeader>
           <CardTitle className="text-3xl text-primary">Lookup Agent</CardTitle>
           <CardDescription>
-            Search by ANSName or attributes. Use &quot;AI Fill Details&quot; for help.
+            Search by ANSName or attributes. Leave fields blank to list all agents. Use &quot;AI Fill Details&quot; for help.
           </CardDescription>
         </CardHeader>
         <CardContent>

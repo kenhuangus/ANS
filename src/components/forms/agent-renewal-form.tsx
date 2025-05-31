@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { AgentRenewalRequestBaseSchema, type AgentRenewalRequestPayload } from "@/lib/schemas"; // Changed import
+import { AgentRenewalRequestBaseSchema, type AgentRenewalRequestPayload } from "@/lib/schemas";
 import type { AgentRenewalResponse } from "@/types";
 import { useState } from "react";
 import { Loader2, Sparkles } from "lucide-react";
@@ -30,34 +30,22 @@ export function AgentRenewalForm() {
   const [renewalResult, setRenewalResult] = useState<AgentRenewalResponse | null>(null);
 
   const form = useForm<AgentRenewalRequestPayload>({
-    resolver: zodResolver(AgentRenewalRequestBaseSchema), // Ensured correct schema is used
+    resolver: zodResolver(AgentRenewalRequestBaseSchema),
     defaultValues: { 
-      ansName: "a2a://myAgent.service.MyOrg.v1.0", // More specific placeholder
+      ansName: "a2a://translator.text.ExampleOrg.v1.0.0.general", // Sample A2A agent
       certificate: {
-        subject: "CN=myAgent.service.MyOrg.com,O=MyOrg,C=US", 
-        issuer: "CN=Local Mock CA,O=Mock CA Org,C=US", // Placeholder
-        pem: "", 
+        subject: "CN=translator.text.ExampleOrg.com,O=ExampleOrg,C=US", // Placeholder, AI should update for new CSR
+        issuer: "CN=Local Mock CA,O=Mock CA Org,C=US", 
+        pem: "", // Empty, expecting new CSR (AI or manual)
       },
-      protocolExtensions: {},
-      actualEndpoint: "https://api.myorg.com/myagent/v1/renew", // More specific placeholder
+      protocolExtensions: {}, // Empty, AI or user can fill if updates needed
+      actualEndpoint: "", // Empty, AI or user can fill if endpoint changes
     },
   });
 
   async function handleAiFill() {
     setIsAiLoading(true);
     const currentValues = form.getValues();
-    // For AI fill, ansName is usually important to guide CSR generation.
-    // The Genkit flow prompt is designed to attempt generation if missing,
-    // but having it is better.
-    // if (!currentValues.ansName || currentValues.ansName.trim() === "") {
-    //   toast({
-    //     title: "ANSName Recommended for AI Fill",
-    //     description: "Please enter the ANSName of the agent to renew for best AI assistance with CSR details.",
-    //     variant: "default", // Not an error, just a recommendation
-    //   });
-    //   // We can still proceed, AI will try its best.
-    // }
-
     const result = await aiFillRenewalDetailsAction(currentValues);
     
     if ('error' in result) {
@@ -69,7 +57,6 @@ export function AgentRenewalForm() {
     } else {
       const processedResult = {
         ...result,
-        // Ensure protocolExtensions is an object. AI might return a string.
         protocolExtensions: result.protocolExtensions && typeof result.protocolExtensions === 'object' 
           ? result.protocolExtensions 
           : (typeof result.protocolExtensions === 'string' ? JSON.parse(result.protocolExtensions) : {}),
@@ -87,8 +74,6 @@ export function AgentRenewalForm() {
     setIsLoading(true);
     setRenewalResult(null);
     
-    // For actual submission, ansName and new CSR details are essential.
-    // The schema makes them optional for AI fill, but the API endpoint will likely require them.
     if (!data.ansName || !data.certificate?.pem || !data.certificate?.subject) {
        toast({
         title: "Missing Information for Submission",
