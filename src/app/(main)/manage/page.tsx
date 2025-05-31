@@ -2,7 +2,7 @@
 import { AgentRenewalForm } from '@/components/forms/agent-renewal-form';
 import { AgentRevocationForm } from '@/components/forms/agent-revoke-form';
 import { Separator } from '@/components/ui/separator';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { getDisplayableAgents } from '@/lib/db';
 import type { AgentRecord } from '@/types';
 import {
