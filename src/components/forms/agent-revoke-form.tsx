@@ -17,7 +17,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { AgentRevocationRequestSchema, type AgentRevocationRequestPayload } from "@/lib/schemas";
 import type { AgentRevocationResponse } from "@/types";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Loader2, AlertTriangle } from "lucide-react";
 import {
   AlertDialog,
@@ -31,7 +31,13 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-export function AgentRevocationForm() {
+interface AgentRevocationFormProps {
+  selectedAnsName?: string | null;
+}
+
+const REVOCATION_FORM_DEFAULT_ANSNAME = "mcp://sentimentAnalyzer.text.ExampleCorp.v1.2.0"; // Default if nothing selected
+
+export function AgentRevocationForm({ selectedAnsName }: AgentRevocationFormProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [revocationResult, setRevocationResult] = useState<AgentRevocationResponse | null>(null);
@@ -40,20 +46,39 @@ export function AgentRevocationForm() {
   const form = useForm<AgentRevocationRequestPayload>({
     resolver: zodResolver(AgentRevocationRequestSchema),
     defaultValues: {
-      ansName: "mcp://sentimentAnalyzer.text.ExampleCorp.v1.2.0", // Sample MCP agent
+      ansName: selectedAnsName || REVOCATION_FORM_DEFAULT_ANSNAME,
     },
   });
 
+  useEffect(() => {
+    form.setValue('ansName', selectedAnsName || REVOCATION_FORM_DEFAULT_ANSNAME, { shouldValidate: true, shouldDirty: true });
+    if(selectedAnsName) {
+        setRevocationResult(null); // Clear previous results when selection changes
+    } else {
+        form.reset({ ansName: REVOCATION_FORM_DEFAULT_ANSNAME }); // Reset to default if selection cleared
+    }
+  }, [selectedAnsName, form]);
+
   async function handleRevokeConfirm() {
     setShowConfirmDialog(false);
-    const data = form.getValues(); 
+    const ansNameToRevoke = form.getValues().ansName; 
+    
+    if (!ansNameToRevoke) {
+      toast({
+        title: "ANSName Required",
+        description: "Cannot revoke agent without an ANSName.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
     setRevocationResult(null);
     try {
       const response = await fetch('/api/agents/revoke', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ansName: ansNameToRevoke }),
       });
       const result = await response.json();
 
@@ -66,8 +91,7 @@ export function AgentRevocationForm() {
         title: "Revocation Attempted",
         description: result.message || `Agent ${result.ansName} revocation processed.`,
       });
-      // Optionally reset form or update default if this agent is now gone
-      // form.reset({ ansName: "anotherSampleAgent.ifAvailable.otherwise.empty" }); 
+      // Parent component should ideally handle updating the agent list and potentially clearing selection.
     } catch (error) {
        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
       toast({
@@ -85,7 +109,7 @@ export function AgentRevocationForm() {
     if (!currentAnsName || currentAnsName.trim() === "") {
       toast({
         title: "ANSName Required",
-        description: "Please enter the ANSName of the agent to revoke.",
+        description: "Please select an agent from the table or ensure the ANSName is filled.",
         variant: "destructive",
       });
       return;
@@ -102,7 +126,7 @@ export function AgentRevocationForm() {
           Revoke Agent Registration
         </CardTitle>
         <CardDescription>
-          Enter the ANSName of the agent to revoke. This action is irreversible.
+          Agent&apos;s ANSName will be auto-filled if selected from the table. This action is irreversible.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -114,14 +138,23 @@ export function AgentRevocationForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>ANSName of Agent to Revoke</FormLabel>
-                  <FormControl><Input placeholder="e.g., a2a://rogueagent.service.MyOrg.v1.0" {...field} value={field.value || ""} className="border-destructive focus:ring-destructive" /></FormControl>
+                  <FormControl>
+                    <Input 
+                      placeholder="Select an agent from the table" 
+                      {...field} 
+                      value={field.value || ""} 
+                      readOnly={!!selectedAnsName} 
+                      className={!!selectedAnsName ? "border-destructive bg-input cursor-default" : "border-destructive focus:ring-destructive"}
+                      disabled={!!selectedAnsName} // Disable if selected from table
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
             <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
               <AlertDialogTrigger asChild>
-                <Button type="submit" variant="destructive" className="w-full" disabled={isLoading}>
+                <Button type="submit" variant="destructive" className="w-full" disabled={isLoading || !form.getValues().ansName}>
                   {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Revoke Registration
                 </Button>
@@ -130,8 +163,10 @@ export function AgentRevocationForm() {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This action cannot be undone. This will permanently revoke the agent registration for
+                    This action cannot be undone. This will permanently revoke the agent registration for:
+                    <br />
                     <span className="font-semibold break-all"> {form.getValues().ansName || "this agent"}</span>.
+                    <br />
                     The agent will no longer be discoverable or resolvable.
                   </AlertDialogDescription>
                 </AlertDialogHeader>

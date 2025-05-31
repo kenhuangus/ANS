@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -89,5 +90,12 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+  }
+  /* Style for selected table row */
+  tr[data-state='selected'] {
+    @apply bg-accent text-accent-foreground;
+  }
+  tr[data-state='selected']:hover {
+    @apply bg-accent/90 text-accent-foreground; /* Slightly darker hover for selected row */
   }
 }

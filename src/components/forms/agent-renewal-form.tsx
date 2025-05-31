@@ -19,11 +19,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { AgentRenewalRequestBaseSchema, type AgentRenewalRequestPayload } from "@/lib/schemas";
 import type { AgentRenewalResponse } from "@/types";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Loader2, Sparkles } from "lucide-react";
 import { aiFillRenewalDetailsAction } from "@/app/actions/ai/ans-details-actions";
 
-export function AgentRenewalForm() {
+interface AgentRenewalFormProps {
+  selectedAnsName?: string | null;
+}
+
+const RENEWAL_FORM_DEFAULT_ANSNAME = "a2a://translator.text.ExampleOrg.v1.0.0.general"; // Default if nothing selected
+
+export function AgentRenewalForm({ selectedAnsName }: AgentRenewalFormProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -32,21 +38,64 @@ export function AgentRenewalForm() {
   const form = useForm<AgentRenewalRequestPayload>({
     resolver: zodResolver(AgentRenewalRequestBaseSchema),
     defaultValues: { 
-      ansName: "a2a://translator.text.ExampleOrg.v1.0.0.general", // Sample A2A agent
+      ansName: selectedAnsName || RENEWAL_FORM_DEFAULT_ANSNAME,
       certificate: {
-        subject: "CN=translator.text.ExampleOrg.com,O=ExampleOrg,C=US", // Placeholder, AI should update for new CSR
-        issuer: "CN=Local Mock CA,O=Mock CA Org,C=US", 
-        pem: "", // Empty, expecting new CSR (AI or manual)
+        subject: "", 
+        issuer: "", 
+        pem: "", 
       },
-      protocolExtensions: {}, // Empty, AI or user can fill if updates needed
-      actualEndpoint: "", // Empty, AI or user can fill if endpoint changes
+      protocolExtensions: {}, 
+      actualEndpoint: "", 
     },
   });
+
+  useEffect(() => {
+    form.setValue('ansName', selectedAnsName || RENEWAL_FORM_DEFAULT_ANSNAME, { shouldValidate: true, shouldDirty: true });
+    if (selectedAnsName) {
+        // Clear potentially irrelevant fields when a new agent is selected for renewal
+        form.setValue('certificate.subject', '');
+        form.setValue('certificate.pem', '');
+        form.setValue('certificate.issuer', ''); // Issuer might be same, but good to clear for AI
+        form.setValue('actualEndpoint', ''); // Endpoint might change
+        form.setValue('protocolExtensions', {}); // Extensions might change
+        setRenewalResult(null); // Clear previous results
+    } else {
+        // If selection is cleared, reset other fields too
+        form.reset({
+            ansName: RENEWAL_FORM_DEFAULT_ANSNAME,
+            certificate: { subject: "", issuer: "", pem: "" },
+            protocolExtensions: {},
+            actualEndpoint: "",
+        });
+    }
+  }, [selectedAnsName, form]);
 
   async function handleAiFill() {
     setIsAiLoading(true);
     const currentValues = form.getValues();
-    const result = await aiFillRenewalDetailsAction(currentValues);
+    const ansNameToFill = currentValues.ansName; // AI will use this ansName as context
+
+    if (!ansNameToFill) {
+         toast({
+            title: "ANSName Required for AI Fill",
+            description: "ANSName field must be filled to use AI assistance for renewal details.",
+            variant: "destructive",
+        });
+        setIsAiLoading(false);
+        return;
+    }
+
+    // Pass only relevant fields for AI to fill, preserving the ansName
+    const aiInput: Partial<AgentRenewalRequestPayload> = {
+        ansName: ansNameToFill, // Critical context for AI
+        // Let AI fill these based on the ansName context
+        certificate: { subject: "", pem: "", issuer: ""}, 
+        actualEndpoint: currentValues.actualEndpoint || "", // Pass current if user typed something
+        protocolExtensions: currentValues.protocolExtensions || {}
+    };
+
+
+    const result = await aiFillRenewalDetailsAction(aiInput);
     
     if ('error' in result) {
       toast({
@@ -55,13 +104,16 @@ export function AgentRenewalForm() {
         variant: "destructive",
       });
     } else {
-      const processedResult = {
-        ...result,
+      // Merge AI results with the fixed ansName
+      const updatedValues = {
+        ...form.getValues(), // Keep existing values not touched by AI
+        ...result, // AI suggestions
+        ansName: ansNameToFill, // Crucially, ensure selected/current ansName is not overwritten by AI
         protocolExtensions: result.protocolExtensions && typeof result.protocolExtensions === 'object' 
           ? result.protocolExtensions 
           : (typeof result.protocolExtensions === 'string' ? JSON.parse(result.protocolExtensions) : {}),
       };
-      form.reset(processedResult);
+      form.reset(updatedValues);
       toast({
         title: "AI Assistance",
         description: "Renewal details (like CSR) populated by AI. Please review and submit.",
@@ -74,10 +126,12 @@ export function AgentRenewalForm() {
     setIsLoading(true);
     setRenewalResult(null);
     
-    if (!data.ansName || !data.certificate?.pem || !data.certificate?.subject) {
+    const finalAnsName = data.ansName; // Should be correctly set by useEffect or default
+
+    if (!finalAnsName || !data.certificate?.pem || !data.certificate?.subject) {
        toast({
         title: "Missing Information for Submission",
-        description: "ANSName and a new CSR (Subject and PEM) are essential for renewal. Use 'AI Fill' or complete them manually before submitting.",
+        description: "ANSName and a new CSR (Subject and PEM) are essential for renewal.",
         variant: "destructive",
       });
       setIsLoading(false);
@@ -88,7 +142,7 @@ export function AgentRenewalForm() {
       const response = await fetch('/api/agents/renew', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ...data, ansName: finalAnsName }), 
       });
       const result = await response.json();
 
@@ -118,7 +172,7 @@ export function AgentRenewalForm() {
       <CardHeader>
         <CardTitle className="text-2xl text-primary">Renew Agent Registration</CardTitle>
         <CardDescription>
-          Provide agent&apos;s ANSName and new CSR. Use &quot;AI Fill CSR & Other Details&quot; for CSR generation.
+          Agent&apos;s ANSName will be auto-filled if selected from the table above. Provide a new CSR.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -130,20 +184,29 @@ export function AgentRenewalForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>ANSName of Agent to Renew</FormLabel>
-                  <FormControl><Input placeholder="e.g., a2a://oldagent.service.MyOrg.v1.0" {...field} value={field.value || ""} disabled={isAiLoading}/></FormControl>
+                  <FormControl>
+                    <Input 
+                      placeholder="Select an agent from the table" 
+                      {...field} 
+                      value={field.value || ""} 
+                      readOnly={!!selectedAnsName} 
+                      className={!!selectedAnsName ? "bg-input cursor-default" : ""}
+                      disabled={isAiLoading || !!selectedAnsName} 
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
             <div className="flex justify-end">
-              <Button type="button" variant="outline" onClick={handleAiFill} disabled={isAiLoading} className="mb-2">
+              <Button type="button" variant="outline" onClick={handleAiFill} disabled={isAiLoading || !form.getValues().ansName || !selectedAnsName}>
                 {isAiLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
                 AI Fill CSR & Other Details
               </Button>
             </div>
-            <FormField control={form.control} name="certificate.subject" render={({ field }) => ( <FormItem> <FormLabel>Certificate Subject (for new CSR)</FormLabel> <FormControl><Input placeholder="Should match existing or be new subject" {...field} value={field.value || ""} disabled={isAiLoading}/></FormControl> <FormMessage /> </FormItem> )}/>
+            <FormField control={form.control} name="certificate.subject" render={({ field }) => ( <FormItem> <FormLabel>Certificate Subject (for new CSR)</FormLabel> <FormControl><Input placeholder="e.g., CN=agent.example.com,O=Org" {...field} value={field.value || ""} disabled={isAiLoading}/></FormControl> <FormMessage /> </FormItem> )}/>
             <FormField control={form.control} name="certificate.pem" render={({ field }) => ( <FormItem> <FormLabel>New Certificate Signing Request (CSR PEM)</FormLabel> <FormControl><Textarea placeholder="-----BEGIN CERTIFICATE REQUEST-----..." {...field} value={field.value || ""} rows={7} disabled={isAiLoading}/></FormControl> <FormDescription>Paste CSR or let AI generate a mock one.</FormDescription> <FormMessage /> </FormItem> )}/>
-            <FormField control={form.control} name="certificate.issuer" render={({ field }) => ( <FormItem> <FormLabel>Certificate Issuer (Informational)</FormLabel> <FormControl><Input placeholder="e.g., CN=Local Mock CA" {...field} value={field.value || ""} disabled={isAiLoading}/></FormControl> <FormMessage /> </FormItem> )}/>
+            <FormField control={form.control} name="certificate.issuer" render={({ field }) => ( <FormItem> <FormLabel>Certificate Issuer (Informational)</FormLabel> <FormControl><Input placeholder="e.g., CN=Local Mock CA (optional)" {...field} value={field.value || ""} disabled={isAiLoading}/></FormControl> <FormMessage /> </FormItem> )}/>
             
             <FormField control={form.control} name="actualEndpoint" render={({ field }) => ( <FormItem> <FormLabel>New/Updated Actual Network Endpoint URL (Optional)</FormLabel> <FormControl><Input placeholder="https://api.example.com/agent/v2" {...field} value={field.value || ""} disabled={isAiLoading}/></FormControl> <FormDescription>Leave blank if unchanged, or AI can suggest.</FormDescription> <FormMessage /> </FormItem> )}/>
             <FormField
@@ -159,7 +222,7 @@ export function AgentRenewalForm() {
                       onChange={(e) => {
                         try {
                           const val = e.target.value;
-                          if (val.trim() === "") { field.onChange({}); }
+                          if (val.trim() === "" || val.trim() === "{}") { field.onChange({}); } // Allow empty object
                           else { field.onChange(JSON.parse(val)); }
                         } catch (error) { field.onChange(e.target.value); }
                       }}
