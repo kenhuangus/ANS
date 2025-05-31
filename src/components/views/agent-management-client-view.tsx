@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, RefreshCw, Trash2, ShieldAlert, Info } from 'lucide-react';
 import { directRenewAgentAction, directRevokeAgentAction, fetchDisplayableAgentsAction } from '@/app/actions/db/agent-actions';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { format, formatDistanceToNowStrict, addSeconds } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -21,9 +21,35 @@ interface AgentManagementClientViewProps {
 
 export function AgentManagementClientView({ initialAgents }: AgentManagementClientViewProps) {
   const [agents, setAgents] = useState<AgentRecord[]>(initialAgents);
-  const [isLoading, setIsLoading] = useState(false); 
+  const [isLoading, setIsLoading] = useState(false);
   const [actionStates, setActionStates] = useState<Record<string, { renewing?: boolean; revoking?: boolean }>>({});
+  const [agentExpiryTexts, setAgentExpiryTexts] = useState<Record<string, string>>({});
   const { toast } = useToast();
+
+  useEffect(() => {
+    setAgents(initialAgents);
+  }, [initialAgents]);
+
+  useEffect(() => {
+    const newExpiryTexts: Record<string, string> = {};
+    agents.forEach(agent => {
+      if (agent.isRevoked) {
+        newExpiryTexts[agent.ansName] = 'Revoked';
+      } else {
+        const referenceDate = agent.renewalTimestamp ? new Date(agent.renewalTimestamp) : new Date(agent.registrationTimestamp);
+        const expiryDate = addSeconds(referenceDate, agent.ttl);
+        const now = new Date();
+
+        if (expiryDate < now) {
+          newExpiryTexts[agent.ansName] = 'Expired';
+        } else {
+          newExpiryTexts[agent.ansName] = `In ${formatDistanceToNowStrict(expiryDate)}`;
+        }
+      }
+    });
+    setAgentExpiryTexts(newExpiryTexts);
+  }, [agents]);
+
 
   const refreshAgents = async () => {
     setIsLoading(true);
@@ -36,11 +62,6 @@ export function AgentManagementClientView({ initialAgents }: AgentManagementClie
       setIsLoading(false);
     }
   };
-
-  useEffect(() => {
-    setAgents(initialAgents);
-  }, [initialAgents]);
-
 
   const handleRenew = async (ansName: string) => {
     setActionStates(prev => ({ ...prev, [ansName]: { ...prev[ansName], renewing: true } }));
@@ -59,7 +80,7 @@ export function AgentManagementClientView({ initialAgents }: AgentManagementClie
     const result = await directRevokeAgentAction(ansName);
     if (result.success) {
       toast({ title: "Success", description: result.message });
-      await refreshAgents(); 
+      await refreshAgents();
     } else {
       toast({ title: "Error", description: result.message, variant: "destructive" });
     }
@@ -70,18 +91,6 @@ export function AgentManagementClientView({ initialAgents }: AgentManagementClie
     if (!timestamp) return 'Never';
     return format(new Date(timestamp), 'MMM d, yyyy HH:mm');
   };
-
-  const formatExpiry = (registrationTimestamp: string, ttl: number, renewalTimestamp: string | null) => {
-    const referenceDate = renewalTimestamp ? new Date(renewalTimestamp) : new Date(registrationTimestamp);
-    const expiryDate = addSeconds(referenceDate, ttl);
-    const now = new Date();
-
-    if (expiryDate < now) {
-      return <span className="text-destructive">Expired</span>;
-    }
-    return `In ${formatDistanceToNowStrict(expiryDate)}`;
-  };
-
 
   return (
     <section id="agents-overview">
@@ -128,8 +137,8 @@ export function AgentManagementClientView({ initialAgents }: AgentManagementClie
                       <TableCell>{agent.provider}</TableCell>
                       <TableCell>{agent.version}</TableCell>
                       <TableCell className="text-xs">{formatRenewalTimestamp(agent.renewalTimestamp)}</TableCell>
-                      <TableCell className={cn("text-xs", agent.isRevoked && "text-destructive")}>
-                        {agent.isRevoked ? 'Revoked' : formatExpiry(agent.registrationTimestamp, agent.ttl, agent.renewalTimestamp)}
+                      <TableCell className={cn("text-xs", (agent.isRevoked || agentExpiryTexts[agent.ansName] === 'Expired') && "text-destructive")}>
+                        {agentExpiryTexts[agent.ansName] || 'Calculating...'}
                       </TableCell>
                       <TableCell className="space-x-2 text-center">
                         {agent.isRevoked ? (
