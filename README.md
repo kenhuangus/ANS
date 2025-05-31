@@ -1,5 +1,5 @@
 
-# AgentVerse Directory - A Demo of Agent Name Service (ANS)
+# Agent Name Service (ANS) Directory - A Demo Implementation
 
 This project is a prototype implementation demonstrating the core concepts of the Agent Name Service (ANS) as described in the research paper:
 
@@ -8,6 +8,7 @@ This project is a prototype implementation demonstrating the core concepts of th
 **Title:** Agent Name Service (ANS): A Universal Directory for Secure AI Agent Discovery and Interoperability
 **Authors:** Ken Huang, Vineeth Sai Narajala, Idan Habler, Akram Sheriff
 **Link:** [https://arxiv.org/abs/2505.10609](https://arxiv.org/abs/2505.10609)
+**DOI:** [https://doi.org/10.48550/arXiv.2505.10609](https://doi.org/10.48550/arXiv.2505.10609)
 
 **Abstract:**
 > The proliferation of AI agents requires robust mechanisms for secure discovery. This paper introduces the Agent Name Service (ANS), a novel architecture based on DNS addressing the lack of a public agent discovery framework. ANS provides a protocol-agnostic registry infrastructure that leverages Public Key Infrastructure (PKI) certificates for verifiable agent identity and trust. The architecture features several key innovations: a formalized agent registration and renewal mechanism for lifecycle management; DNS-inspired naming conventions with capability-aware resolution; a modular Protocol Adapter Layer supporting diverse communication standards (A2A, MCP, ACP etc.); and precisely defined algorithms for secure resolution. We implement structured communication using JSON Schema and conduct a comprehensive threat analysis of our proposal. The result is a foundational directory service addressing the core challenges of secured discovery and interaction in multi-agent systems, paving the way for future interoperable, trustworthy, and scalable agent ecosystems.
@@ -62,10 +63,9 @@ Follow these steps to set up and run the project locally:
 
 1.  **Clone the repository (if you haven't already):**
     ```bash
-    git clone https://github.com/kenhuangus/agentverse-directory 
-    cd agentverse-directory
+    git clone https://github.com/kenhuangus/ANS 
+    cd ANS
     ```
-    (Assuming `agentverse-directory` is the repository name. Please update if it's different.)
 
 2.  **Install dependencies:**
     Make sure you have Node.js and npm (or yarn/pnpm) installed.
