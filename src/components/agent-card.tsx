@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { AgentCapabilityResponse } from "@/types";
@@ -24,7 +25,7 @@ export function AgentCard({ agent }: AgentCardProps) {
     <Card className="w-full shadow-lg break-inside-avoid-column">
       <CardHeader>
         <div className="flex justify-between items-start">
-          <CardTitle className="text-2xl text-primary flex items-center">
+          <CardTitle className="text-2xl text-primary flex items-center break-all">
             <ShieldCheck className="h-7 w-7 mr-2 text-green-600" /> 
             {agent.Endpoint}
           </CardTitle>
@@ -78,3 +79,4 @@ export function AgentCard({ agent }: AgentCardProps) {
     </Card>
   );
 }
+
