@@ -134,7 +134,7 @@ If you use or refer to the concepts from the Agent Name Service paper in your wo
     }
   ],
   "URL": "https://arxiv.org/abs/2505.10609",
-  "DOI": "pending/actual_DOI_if_published_elsewhere",
+  "DOI": "10.48550/arXiv.2505.10609",
   "publisher": "arXiv",
   "issued": {
     "date-parts": [
@@ -144,7 +144,7 @@ If you use or refer to the concepts from the Agent Name Service paper in your wo
   "note": "arXiv:2505.10609 [cs.CR]"
 }
 ```
-*(Note: The "DOI" and "issued" fields are placeholders and would be updated if the paper is formally published in a journal with a DOI. The arXiv submission date is estimated based on the ID for this example.)*
+*(Note: The "issued" field is an estimate based on the arXiv ID for this example and would be updated if the paper is formally published elsewhere. The arXiv submission date is typically reflected in the ID itself.)*
 
 ## Disclaimer
 
@@ -175,3 +175,4 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
