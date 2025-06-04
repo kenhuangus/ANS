@@ -21,6 +21,10 @@ This application serves as an interactive demonstration of the ANS, allowing use
 *   Manage the lifecycle of these agents through renewal and revocation.
 
 The implementation focuses on showcasing the key workflows and architectural ideas from the paper using a simplified, mock environment for PKI operations but with a persistent SQLite database for agent records.
+## Demo Video
+
+[![Watch the video](https://img.youtube.com/vi/_tO1JO_xLOk/0.jpg)](https://www.youtube.com/watch?v=_tO1JO_xLOk)
+
 
 ## Implemented Functionalities
 
