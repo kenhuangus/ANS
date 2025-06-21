@@ -39,6 +39,7 @@ This demo implements the following core features inspired by the ANS paper:
 2.  **ANS Lookup & Discovery:**
     *   **Name & Capability-based Resolution:** Users can perform a fuzzy search using a single search term. The system attempts to match this term against various parts of the agent's ANSName, provider, or other metadata.
     *   **Secure Resolution (Simulated):** Lookup responses include the agent's details, its mock certificate, a Time-To-Live (TTL), and a mock registry signature over these details, demonstrating the principle of verifiable responses.
+    *   **API**: Retrieve agents' details using API ```curl -X POST http://localhost:9002/api/agents/lookup   -H "Content-Type: application/json"   -d '{"query": "a2a"}'```
 
 3.  **ANS Management (Lifecycle):**
     *   **Agent Overview Table:** The management page displays a table of registered agents, including their status (active, revoked) and expiry information.
